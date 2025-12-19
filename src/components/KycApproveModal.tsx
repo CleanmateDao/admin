@@ -1,4 +1,4 @@
-import Modal from './Modal';
+import Modal from "./Modal";
 
 interface KycApproveModalProps {
   isOpen: boolean;
@@ -13,23 +13,23 @@ export default function KycApproveModal({
   isOpen,
   onClose,
   onConfirm,
-  submissionId,
+  submissionId: _submissionId,
   address,
   isLoading = false,
 }: KycApproveModalProps) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Approve KYC Submission">
       <div>
-        <p style={{ marginBottom: '1rem', color: 'rgba(255, 255, 255, 0.7)' }}>
+        <p className="mb-4 text-muted-foreground">
           Are you sure you want to approve this KYC submission?
         </p>
         {address && (
-          <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#1a1a1a', borderRadius: '4px' }}>
-            <strong>Address:</strong>{' '}
-            <span style={{ fontFamily: 'monospace' }}>{address}</span>
+          <div className="mb-4 p-3 bg-muted rounded border border-border">
+            <strong className="text-foreground">Address:</strong>{" "}
+            <span className="font-mono text-foreground">{address}</span>
           </div>
         )}
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+        <div className="flex gap-2 justify-end mt-6">
           <button
             type="button"
             className="btn-secondary"
@@ -44,11 +44,10 @@ export default function KycApproveModal({
             onClick={onConfirm}
             disabled={isLoading}
           >
-            {isLoading ? 'Approving...' : 'Approve Submission'}
+            {isLoading ? "Approving..." : "Approve Submission"}
           </button>
         </div>
       </div>
     </Modal>
   );
 }
-

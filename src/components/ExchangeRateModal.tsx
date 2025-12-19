@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import Modal from './Modal';
+import { useState, useEffect } from "react";
+import Modal from "./Modal";
 
 interface ExchangeRate {
   id?: string;
@@ -12,7 +12,7 @@ interface ExchangeRate {
 interface ExchangeRateModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: Omit<ExchangeRate, 'id'>) => void;
+  onSave: (data: Omit<ExchangeRate, "id">) => void;
   exchangeRate?: ExchangeRate | null;
   isLoading?: boolean;
 }
@@ -25,10 +25,10 @@ export default function ExchangeRateModal({
   isLoading = false,
 }: ExchangeRateModalProps) {
   const [formData, setFormData] = useState({
-    currencyCode: '',
-    currencyName: '',
-    symbol: '',
-    rateToB3TR: '',
+    currencyCode: "",
+    currencyName: "",
+    symbol: "",
+    rateToB3TR: "",
   });
 
   useEffect(() => {
@@ -41,10 +41,10 @@ export default function ExchangeRateModal({
       });
     } else {
       setFormData({
-        currencyCode: '',
-        currencyName: '',
-        symbol: '',
-        rateToB3TR: '',
+        currencyCode: "",
+        currencyName: "",
+        symbol: "",
+        rateToB3TR: "",
       });
     }
   }, [exchangeRate, isOpen]);
@@ -56,10 +56,10 @@ export default function ExchangeRateModal({
 
   const handleClose = () => {
     setFormData({
-      currencyCode: '',
-      currencyName: '',
-      symbol: '',
-      rateToB3TR: '',
+      currencyCode: "",
+      currencyName: "",
+      symbol: "",
+      rateToB3TR: "",
     });
     onClose();
   };
@@ -70,7 +70,7 @@ export default function ExchangeRateModal({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title={isEditMode ? 'Update Exchange Rate' : 'Add Exchange Rate'}
+      title={isEditMode ? "Update Exchange Rate" : "Add Exchange Rate"}
       size="medium"
     >
       <form onSubmit={handleSubmit}>
@@ -80,15 +80,20 @@ export default function ExchangeRateModal({
             id="currency-code"
             type="text"
             value={formData.currencyCode}
-            onChange={(e) => setFormData({ ...formData, currencyCode: e.target.value.toUpperCase() })}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                currencyCode: e.target.value.toUpperCase(),
+              })
+            }
             required
             placeholder="USD"
             disabled={isLoading || isEditMode}
             maxLength={3}
-            style={{ textTransform: 'uppercase' }}
+            style={{ textTransform: "uppercase" }}
           />
           {isEditMode && (
-            <small style={{ color: 'rgba(255, 255, 255, 0.5)', display: 'block', marginTop: '0.25rem' }}>
+            <small className="text-muted-foreground block mt-1">
               Currency code cannot be changed
             </small>
           )}
@@ -99,7 +104,9 @@ export default function ExchangeRateModal({
             id="currency-name"
             type="text"
             value={formData.currencyName}
-            onChange={(e) => setFormData({ ...formData, currencyName: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, currencyName: e.target.value })
+            }
             required
             placeholder="US Dollar"
             disabled={isLoading}
@@ -111,7 +118,9 @@ export default function ExchangeRateModal({
             id="symbol"
             type="text"
             value={formData.symbol}
-            onChange={(e) => setFormData({ ...formData, symbol: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, symbol: e.target.value })
+            }
             required
             placeholder="$"
             disabled={isLoading}
@@ -124,17 +133,19 @@ export default function ExchangeRateModal({
             type="number"
             step="0.000001"
             value={formData.rateToB3TR}
-            onChange={(e) => setFormData({ ...formData, rateToB3TR: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, rateToB3TR: e.target.value })
+            }
             required
             placeholder="0.001"
             disabled={isLoading}
             min="0"
           />
-          <small style={{ color: 'rgba(255, 255, 255, 0.5)', display: 'block', marginTop: '0.25rem' }}>
+          <small className="text-muted-foreground block mt-1">
             How many units of this currency equal 1 B3TR
           </small>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+        <div className="flex gap-2 justify-end mt-6">
           <button
             type="button"
             className="btn-secondary"
@@ -143,12 +154,21 @@ export default function ExchangeRateModal({
           >
             Cancel
           </button>
-          <button type="submit" className="btn-primary" disabled={isLoading}>
-            {isLoading ? (isEditMode ? 'Updating...' : 'Adding...') : isEditMode ? 'Update' : 'Add'}
+          <button
+            type="submit"
+            className="btn-primary"
+            disabled={isLoading}
+          >
+            {isLoading
+              ? isEditMode
+                ? "Updating..."
+                : "Adding..."
+              : isEditMode
+              ? "Update"
+              : "Add"}
           </button>
         </div>
       </form>
     </Modal>
   );
 }
-

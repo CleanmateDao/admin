@@ -1,158 +1,67 @@
-import { useState, useEffect, type ChangeEvent } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, type ChangeEvent } from "react";
 import {
   useReactTable,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
-  ColumnDef,
   flexRender,
-  CellContext,
-  FilterFn,
 } from "@tanstack/react-table";
-import Layout from "../components/Layout";
+import type { ColumnDef, CellContext, FilterFn } from "@tanstack/react-table";
 import ApiKeyPrompt from "../components/ApiKeyPrompt";
 import SearchBar from "../components/SearchBar";
 import FilterBar from "../components/FilterBar";
 import Pagination from "../components/Pagination";
+import DateRangeFilter from "../components/DateRangeFilter";
 import ExchangeRateModal from "../components/ExchangeRateModal";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
-import { useApiClient } from "../hooks/useApiClient";
-import { getApiKey, setApiKey, getBaseUrl, setBaseUrl } from "../lib/auth";
-
-interface Transaction {
-  id: string;
-  userId: string;
-  amount: string;
-  currency: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface ExchangeRate {
-  id: string;
-  currencyCode: string;
-  currencyName: string;
-  symbol: string;
-  rateToB3TR: string;
-}
+import { useServiceAuth } from "../hooks/useServiceAuth";
+import {
+  useBankTransactions,
+  useExchangeRates,
+  useBankMutations,
+} from "../hooks/useBank";
+import { setApiKey, setBaseUrl, getBaseUrl } from "../lib/auth";
+import type { Transaction, ExchangeRate } from "../types/services";
 
 export default function BankPage() {
-  const [authenticated, setAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const { authenticated, loading } = useServiceAuth("bank");
   const [activeTab, setActiveTab] = useState<"transactions" | "exchange-rates">(
     "transactions"
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
   const [showExchangeRateModal, setShowExchangeRateModal] = useState(false);
   const [editingExchangeRate, setEditingExchangeRate] =
     useState<ExchangeRate | null>(null);
   const [deletingExchangeRate, setDeletingExchangeRate] =
     useState<ExchangeRate | null>(null);
-  const apiClient = useApiClient("bank");
-  const queryClient = useQueryClient();
-
-  useEffect(() => {
-    const apiKey = getApiKey("bank");
-    const baseUrl = getBaseUrl("bank");
-    setAuthenticated(!!(apiKey && baseUrl));
-    setLoading(false);
-  }, []);
 
   const {
     data: transactionsData,
     isLoading: isLoadingTransactions,
     error: transactionsError,
-  } = useQuery({
-    queryKey: ["bank-transactions", statusFilter, apiClient],
-    queryFn: async () => {
-      if (!apiClient) throw new Error("Not authenticated");
-      const endpoint = statusFilter
-        ? `/admin/transactions?limit=100&status=${statusFilter}`
-        : "/admin/transactions?limit=100";
-      return apiClient.get<{ data: Transaction[]; pagination: any }>(endpoint);
-    },
-    enabled: !!apiClient && activeTab === "transactions",
-  });
+  } = useBankTransactions(
+    statusFilter || undefined,
+    activeTab,
+    startDate || undefined,
+    endDate || undefined
+  );
 
   const {
-    data: exchangeRatesData,
+    data: exchangeRatesData = [],
     isLoading: isLoadingRates,
     error: ratesError,
-  } = useQuery({
-    queryKey: ["exchange-rates", apiClient],
-    queryFn: async () => {
-      if (!apiClient) throw new Error("Not authenticated");
-      const response = await apiClient.get<{
-        success: boolean;
-        data: Array<{
-          code: string;
-          name: string;
-          symbol: string;
-          rateToB3TR: number;
-          lastUpdated: string;
-        }>;
-      }>("/exchange-rate");
-      // Map the response to match our ExchangeRate interface
-      return response.data.map((rate) => ({
-        id: rate.code, // Use code as ID since we don't have a separate ID
-        currencyCode: rate.code,
-        currencyName: rate.name,
-        symbol: rate.symbol,
-        rateToB3TR: rate.rateToB3TR.toString(),
-      }));
-    },
-    enabled: !!apiClient && activeTab === "exchange-rates",
-  });
+  } = useExchangeRates(activeTab);
 
-  const exchangeRates = exchangeRatesData || [];
-
-  const setExchangeRateMutation = useMutation({
-    mutationFn: async (data: {
-      currencyCode: string;
-      currencyName: string;
-      symbol: string;
-      rateToB3TR: string;
-    }) => {
-      if (!apiClient) throw new Error("Not authenticated");
-      if (editingExchangeRate) {
-        // Update existing rate
-        return apiClient.patch(`/exchange-rate/${data.currencyCode}`, {
-          currencyName: data.currencyName,
-          symbol: data.symbol,
-          rateToB3TR: parseFloat(data.rateToB3TR),
-        });
-      } else {
-        // Create new rate
-        return apiClient.post("/exchange-rate", {
-          currencyCode: data.currencyCode,
-          currencyName: data.currencyName,
-          symbol: data.symbol,
-          rateToB3TR: parseFloat(data.rateToB3TR),
-        });
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["exchange-rates"] });
-      queryClient.invalidateQueries({ queryKey: ["bank-transactions"] });
-      setShowExchangeRateModal(false);
-      setEditingExchangeRate(null);
-    },
-  });
-
-  const deleteExchangeRateMutation = useMutation({
-    mutationFn: async (currencyCode: string) => {
-      if (!apiClient) throw new Error("Not authenticated");
-      return apiClient.delete(`/exchange-rate/${currencyCode}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["exchange-rates"] });
-      setDeletingExchangeRate(null);
-    },
-  });
+  const {
+    setExchangeRate,
+    isSettingExchangeRate,
+    deleteExchangeRate,
+    isDeletingExchangeRate,
+  } = useBankMutations();
 
   const transactions = transactionsData?.data || [];
 
@@ -160,7 +69,7 @@ export default function BankPage() {
     {
       accessorKey: "id",
       header: "ID",
-      cell: (info: CellContext<Transaction, string>) => (
+      cell: (info: CellContext<Transaction, unknown>) => (
         <span style={{ fontFamily: "monospace" }}>
           {(info.getValue() as string).substring(0, 8)}...
         </span>
@@ -169,7 +78,7 @@ export default function BankPage() {
     {
       accessorKey: "userId",
       header: "User ID",
-      cell: (info: CellContext<Transaction, string>) => (
+      cell: (info: CellContext<Transaction, unknown>) => (
         <span style={{ fontFamily: "monospace" }}>
           {(info.getValue() as string).substring(0, 8)}...
         </span>
@@ -186,7 +95,7 @@ export default function BankPage() {
     {
       accessorKey: "status",
       header: "Status",
-      cell: (info: CellContext<Transaction, string>) => {
+      cell: (info: CellContext<Transaction, unknown>) => {
         const status = info.getValue() as string;
         return (
           <span
@@ -200,7 +109,7 @@ export default function BankPage() {
     {
       accessorKey: "createdAt",
       header: "Created At",
-      cell: (info: CellContext<Transaction, string>) =>
+      cell: (info: CellContext<Transaction, unknown>) =>
         new Date(info.getValue() as string).toLocaleString(),
     },
   ];
@@ -221,7 +130,7 @@ export default function BankPage() {
     {
       accessorKey: "rateToB3TR",
       header: "Rate to B3TR",
-      cell: (info: CellContext<ExchangeRate, string>) =>
+      cell: (info: CellContext<ExchangeRate, unknown>) =>
         parseFloat(info.getValue() as string).toFixed(6),
     },
     {
@@ -284,7 +193,7 @@ export default function BankPage() {
   });
 
   const exchangeRatesTable = useReactTable({
-    data: exchangeRates,
+    data: exchangeRatesData,
     columns: exchangeRatesColumns,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -315,17 +224,26 @@ export default function BankPage() {
   const handleAuthenticate = (apiKey: string, baseUrl: string) => {
     setApiKey("bank", apiKey);
     setBaseUrl("bank", baseUrl);
-    setAuthenticated(true);
+    window.location.reload();
   };
 
   const handleLogout = () => {
-    setAuthenticated(false);
     setActiveTab("transactions");
     setSearchQuery("");
     setStatusFilter("");
+    setStartDate("");
+    setEndDate("");
     setShowExchangeRateModal(false);
     setEditingExchangeRate(null);
     setDeletingExchangeRate(null);
+    localStorage.removeItem("admin_api_key_bank");
+    localStorage.removeItem("admin_api_key_bank_url");
+    window.location.reload();
+  };
+
+  const handleClearDateRange = () => {
+    setStartDate("");
+    setEndDate("");
   };
 
   const handleAddExchangeRate = () => {
@@ -339,32 +257,41 @@ export default function BankPage() {
     symbol: string;
     rateToB3TR: string;
   }) => {
-    setExchangeRateMutation.mutate(data);
+    setExchangeRate(
+      {
+        data,
+        isEditing: !!editingExchangeRate,
+      },
+      {
+        onSuccess: () => {
+          setShowExchangeRateModal(false);
+          setEditingExchangeRate(null);
+        },
+      }
+    );
   };
 
   const handleDeleteExchangeRate = () => {
     if (deletingExchangeRate) {
-      deleteExchangeRateMutation.mutate(deletingExchangeRate.currencyCode);
+      deleteExchangeRate(deletingExchangeRate.currencyCode, {
+        onSuccess: () => {
+          setDeletingExchangeRate(null);
+        },
+      });
     }
   };
 
   if (loading) {
-    return (
-      <Layout>
-        <div className="loading">Loading...</div>
-      </Layout>
-    );
+    return <div className="loading">Loading...</div>;
   }
 
   if (!authenticated) {
     return (
-      <Layout>
-        <ApiKeyPrompt
-          serviceName="Bank"
-          onAuthenticate={handleAuthenticate}
-          defaultBaseUrl={getBaseUrl("bank")}
-        />
-      </Layout>
+      <ApiKeyPrompt
+        serviceName="Bank"
+        onAuthenticate={handleAuthenticate}
+        defaultBaseUrl={getBaseUrl("bank")}
+      />
     );
   }
 
@@ -381,270 +308,254 @@ export default function BankPage() {
   };
 
   return (
-    <Layout>
-      <div className="dashboard">
-        <div className="dashboard-header">
-          <h1>Bank Service Administration</h1>
-          <button className="btn-secondary" onClick={handleLogout}>
-            Logout
-          </button>
-        </div>
+    <div className="dashboard">
+      <div className="dashboard-header">
+        <h1>Bank Service Administration</h1>
+        <button className="btn-secondary" onClick={handleLogout}>
+          Logout
+        </button>
+      </div>
 
-        {error && (
-          <div className="error-message" style={{ marginBottom: "1.5rem" }}>
-            {String(error)}
-          </div>
-        )}
-
-        <div className="stats-grid">
-          <div className="stat-card">
-            <h3>Total Transactions</h3>
-            <div className="value">{stats.total}</div>
-          </div>
-          <div className="stat-card">
-            <h3>Completed</h3>
-            <div className="value">{stats.completed}</div>
-          </div>
-          <div className="stat-card">
-            <h3>Pending</h3>
-            <div className="value">{stats.pending}</div>
-          </div>
-          <div className="stat-card">
-            <h3>Failed</h3>
-            <div className="value">{stats.failed}</div>
-          </div>
+      {error && (
+        <div className="error-message" style={{ marginBottom: "1.5rem" }}>
+          {String(error)}
         </div>
+      )}
 
-        <div style={{ display: "flex", gap: "1rem", marginBottom: "1.5rem" }}>
-          <button
-            className={
-              activeTab === "transactions" ? "btn-primary" : "btn-secondary"
-            }
-            onClick={() => setActiveTab("transactions")}
-          >
-            Transactions
-          </button>
-          <button
-            className={
-              activeTab === "exchange-rates" ? "btn-primary" : "btn-secondary"
-            }
-            onClick={() => setActiveTab("exchange-rates")}
-          >
-            Exchange Rates
-          </button>
+      <div className="stats-grid">
+        <div className="stat-card">
+          <h3>Total Transactions</h3>
+          <div className="value">{stats.total}</div>
         </div>
+        <div className="stat-card">
+          <h3>Completed</h3>
+          <div className="value">{stats.completed}</div>
+        </div>
+        <div className="stat-card">
+          <h3>Pending</h3>
+          <div className="value">{stats.pending}</div>
+        </div>
+        <div className="stat-card">
+          <h3>Failed</h3>
+          <div className="value">{stats.failed}</div>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: "1rem", marginBottom: "1.5rem" }}>
+        <button
+          className={
+            activeTab === "transactions" ? "btn-primary" : "btn-secondary"
+          }
+          onClick={() => setActiveTab("transactions")}
+        >
+          Transactions
+        </button>
+        <button
+          className={
+            activeTab === "exchange-rates" ? "btn-primary" : "btn-secondary"
+          }
+          onClick={() => setActiveTab("exchange-rates")}
+        >
+          Exchange Rates
+        </button>
+      </div>
 
         {activeTab === "transactions" && (
           <div className="content-section">
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "1rem",
-                flexWrap: "wrap",
-                gap: "1rem",
-              }}
-            >
+            <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
               <h2>Transactions</h2>
-              <div
-                style={{ display: "flex", gap: "1rem", alignItems: "center" }}
-              >
-                <FilterBar>
-                  <select
-                    value={statusFilter}
-                    onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                      setStatusFilter(e.target.value)
-                    }
-                    className="filter-select"
-                  >
-                    <option value="">All Statuses</option>
-                    <option value="COMPLETED">Completed</option>
-                    <option value="PENDING_PAYMENT">Pending Payment</option>
-                    <option value="FAILED">Failed</option>
-                  </select>
-                </FilterBar>
-                <SearchBar
-                  value={searchQuery}
-                  onChange={setSearchQuery}
-                  placeholder="Search transactions..."
-                />
-              </div>
+              <div className="flex gap-4 items-center flex-wrap">
+              <FilterBar>
+                <select
+                  value={statusFilter}
+                  onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                    setStatusFilter(e.target.value)
+                  }
+                  className="filter-select"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="COMPLETED">Completed</option>
+                  <option value="PENDING_PAYMENT">Pending Payment</option>
+                  <option value="FAILED">Failed</option>
+                </select>
+              </FilterBar>
+              <SearchBar
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search transactions..."
+              />
             </div>
+          </div>
+          <div className="mb-4">
+            <DateRangeFilter
+              startDate={startDate}
+              endDate={endDate}
+              onStartDateChange={setStartDate}
+              onEndDateChange={setEndDate}
+              onClear={handleClearDateRange}
+            />
+          </div>
 
-            {isLoadingTransactions ? (
-              <div className="loading">Loading transactions...</div>
-            ) : transactions.length === 0 ? (
-              <p>No transactions found</p>
-            ) : (
-              <>
-                <div className="table-container">
-                  <table className="table">
-                    <thead>
-                      {transactionsTable
-                        .getHeaderGroups()
-                        .map((headerGroup) => (
-                          <tr key={headerGroup.id}>
-                            {headerGroup.headers.map((header) => (
-                              <th key={header.id}>
-                                {flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext()
-                                )}
-                              </th>
-                            ))}
-                          </tr>
-                        ))}
-                    </thead>
-                    <tbody>
-                      {transactionsTable.getRowModel().rows.map((row) => (
-                        <tr key={row.id}>
-                          {row.getVisibleCells().map((cell) => (
-                            <td key={cell.id}>
+          {isLoadingTransactions ? (
+            <div className="loading">Loading transactions...</div>
+          ) : transactions.length === 0 ? (
+            <p>No transactions found</p>
+          ) : (
+            <>
+              <div className="table-container">
+                <table className="table">
+                  <thead>
+                    {transactionsTable
+                      .getHeaderGroups()
+                      .map((headerGroup) => (
+                        <tr key={headerGroup.id}>
+                          {headerGroup.headers.map((header) => (
+                            <th key={header.id}>
                               {flexRender(
-                                cell.column.columnDef.cell,
-                                cell.getContext()
+                                header.column.columnDef.header,
+                                header.getContext()
                               )}
-                            </td>
+                            </th>
                           ))}
                         </tr>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-                <Pagination
-                  currentPage={
-                    transactionsTable.getState().pagination.pageIndex + 1
-                  }
-                  totalPages={transactionsTable.getPageCount()}
-                  onPageChange={(page) =>
-                    transactionsTable.setPageIndex(page - 1)
-                  }
-                  pageSize={transactionsTable.getState().pagination.pageSize}
-                  totalItems={transactions.length}
-                  onPageSizeChange={(size) =>
-                    transactionsTable.setPageSize(size)
-                  }
-                />
-              </>
-            )}
-          </div>
-        )}
+                  </thead>
+                  <tbody>
+                    {transactionsTable.getRowModel().rows.map((row) => (
+                      <tr key={row.id}>
+                        {row.getVisibleCells().map((cell) => (
+                          <td key={cell.id}>
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination
+                currentPage={
+                  transactionsTable.getState().pagination.pageIndex + 1
+                }
+                totalPages={transactionsTable.getPageCount()}
+                onPageChange={(page) =>
+                  transactionsTable.setPageIndex(page - 1)
+                }
+                pageSize={transactionsTable.getState().pagination.pageSize}
+                totalItems={transactions.length}
+                onPageSizeChange={(size) =>
+                  transactionsTable.setPageSize(size)
+                }
+              />
+            </>
+          )}
+        </div>
+      )}
 
         {activeTab === "exchange-rates" && (
           <div className="content-section">
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "1rem",
-                flexWrap: "wrap",
-                gap: "1rem",
-              }}
-            >
+            <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
               <h2>Exchange Rates</h2>
-              <div
-                style={{ display: "flex", gap: "1rem", alignItems: "center" }}
-              >
-                <SearchBar
-                  value={searchQuery}
-                  onChange={setSearchQuery}
-                  placeholder="Search exchange rates..."
-                />
-                <button className="btn-primary" onClick={handleAddExchangeRate}>
-                  Add Exchange Rate
-                </button>
-              </div>
+              <div className="flex gap-4 items-center">
+              <SearchBar
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search exchange rates..."
+              />
+              <button className="btn-primary" onClick={handleAddExchangeRate}>
+                Add Exchange Rate
+              </button>
             </div>
+          </div>
 
-            {isLoadingRates ? (
-              <div className="loading">Loading exchange rates...</div>
-            ) : exchangeRates.length === 0 ? (
-              <p>
-                No exchange rates found. Click "Add Exchange Rate" to create
-                one.
-              </p>
-            ) : (
-              <>
-                <div className="table-container">
-                  <table className="table">
-                    <thead>
-                      {exchangeRatesTable
-                        .getHeaderGroups()
-                        .map((headerGroup) => (
-                          <tr key={headerGroup.id}>
-                            {headerGroup.headers.map((header) => (
-                              <th key={header.id}>
-                                {flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext()
-                                )}
-                              </th>
-                            ))}
-                          </tr>
-                        ))}
-                    </thead>
-                    <tbody>
-                      {exchangeRatesTable.getRowModel().rows.map((row) => (
-                        <tr key={row.id}>
-                          {row.getVisibleCells().map((cell) => (
-                            <td key={cell.id}>
+          {isLoadingRates ? (
+            <div className="loading">Loading exchange rates...</div>
+          ) : exchangeRatesData.length === 0 ? (
+            <p>
+              No exchange rates found. Click "Add Exchange Rate" to create one.
+            </p>
+          ) : (
+            <>
+              <div className="table-container">
+                <table className="table">
+                  <thead>
+                    {exchangeRatesTable
+                      .getHeaderGroups()
+                      .map((headerGroup) => (
+                        <tr key={headerGroup.id}>
+                          {headerGroup.headers.map((header) => (
+                            <th key={header.id}>
                               {flexRender(
-                                cell.column.columnDef.cell,
-                                cell.getContext()
+                                header.column.columnDef.header,
+                                header.getContext()
                               )}
-                            </td>
+                            </th>
                           ))}
                         </tr>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-                <Pagination
-                  currentPage={
-                    exchangeRatesTable.getState().pagination.pageIndex + 1
-                  }
-                  totalPages={exchangeRatesTable.getPageCount()}
-                  onPageChange={(page) =>
-                    exchangeRatesTable.setPageIndex(page - 1)
-                  }
-                  pageSize={exchangeRatesTable.getState().pagination.pageSize}
-                  totalItems={exchangeRates.length}
-                  onPageSizeChange={(size) =>
-                    exchangeRatesTable.setPageSize(size)
-                  }
-                />
-              </>
-            )}
-          </div>
-        )}
+                  </thead>
+                  <tbody>
+                    {exchangeRatesTable.getRowModel().rows.map((row) => (
+                      <tr key={row.id}>
+                        {row.getVisibleCells().map((cell) => (
+                          <td key={cell.id}>
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination
+                currentPage={
+                  exchangeRatesTable.getState().pagination.pageIndex + 1
+                }
+                totalPages={exchangeRatesTable.getPageCount()}
+                onPageChange={(page) =>
+                  exchangeRatesTable.setPageIndex(page - 1)
+                }
+                pageSize={exchangeRatesTable.getState().pagination.pageSize}
+                totalItems={exchangeRatesData.length}
+                onPageSizeChange={(size) =>
+                  exchangeRatesTable.setPageSize(size)
+                }
+              />
+            </>
+          )}
+        </div>
+      )}
 
-        <ExchangeRateModal
-          isOpen={showExchangeRateModal}
-          onClose={() => {
-            setShowExchangeRateModal(false);
-            setEditingExchangeRate(null);
-          }}
-          onSave={handleSaveExchangeRate}
-          exchangeRate={editingExchangeRate}
-          isLoading={setExchangeRateMutation.isPending}
-        />
+      <ExchangeRateModal
+        isOpen={showExchangeRateModal}
+        onClose={() => {
+          setShowExchangeRateModal(false);
+          setEditingExchangeRate(null);
+        }}
+        onSave={handleSaveExchangeRate}
+        exchangeRate={editingExchangeRate}
+        isLoading={isSettingExchangeRate}
+      />
 
-        <DeleteConfirmModal
-          isOpen={!!deletingExchangeRate}
-          onClose={() => setDeletingExchangeRate(null)}
-          onConfirm={handleDeleteExchangeRate}
-          title="Delete Exchange Rate"
-          message="Are you sure you want to delete this exchange rate? This action cannot be undone."
-          itemName={
-            deletingExchangeRate
-              ? `${deletingExchangeRate.currencyCode} - ${deletingExchangeRate.currencyName}`
-              : undefined
-          }
-          isLoading={deleteExchangeRateMutation.isPending}
-        />
-      </div>
-    </Layout>
+      <DeleteConfirmModal
+        isOpen={!!deletingExchangeRate}
+        onClose={() => setDeletingExchangeRate(null)}
+        onConfirm={handleDeleteExchangeRate}
+        title="Delete Exchange Rate"
+        message="Are you sure you want to delete this exchange rate? This action cannot be undone."
+        itemName={
+          deletingExchangeRate
+            ? `${deletingExchangeRate.currencyCode} - ${deletingExchangeRate.currencyName}`
+            : undefined
+        }
+        isLoading={isDeletingExchangeRate}
+      />
+    </div>
   );
 }

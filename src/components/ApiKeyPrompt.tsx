@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { ApiClient } from '../lib/api';
 
 interface ApiKeyPromptProps {
   serviceName: string;

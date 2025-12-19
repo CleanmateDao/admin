@@ -1,60 +1,58 @@
+import axios, { AxiosInstance, AxiosError } from "axios";
+
 export interface ApiConfig {
   baseUrl: string;
   apiKey: string;
 }
 
 export class ApiClient {
-  private baseUrl: string;
-  private apiKey: string;
+  private axiosInstance: AxiosInstance;
 
   constructor(config: ApiConfig) {
-    this.baseUrl = config.baseUrl;
-    this.apiKey = config.apiKey;
-  }
-
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
-    const headers = {
-      'Content-Type': 'application/json',
-      'x-api-key': this.apiKey,
-      ...options.headers,
-    };
-
-    const response = await fetch(url, {
-      ...options,
-      headers,
+    this.axiosInstance = axios.create({
+      baseURL: config.baseUrl,
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": config.apiKey,
+      },
     });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: response.statusText }));
-      throw new Error(error.message || `HTTP error! status: ${response.status}`);
-    }
-
-    return response.json();
+    // Add response interceptor for error handling
+    this.axiosInstance.interceptors.response.use(
+      (response) => response,
+      (error: AxiosError) => {
+        if (error.response) {
+          const errorMessage =
+            (error.response.data as { message?: string })?.message ||
+            error.response.statusText ||
+            `HTTP error! status: ${error.response.status}`;
+          throw new Error(errorMessage);
+        } else if (error.request) {
+          throw new Error("Network error: No response received from server");
+        } else {
+          throw new Error(`Request error: ${error.message}`);
+        }
+      }
+    );
   }
 
   async get<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'GET' });
+    const response = await this.axiosInstance.get<T>(endpoint);
+    return response.data;
   }
 
   async post<T>(endpoint: string, data?: any): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
-    });
+    const response = await this.axiosInstance.post<T>(endpoint, data);
+    return response.data;
   }
 
   async patch<T>(endpoint: string, data?: any): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'PATCH',
-      body: data ? JSON.stringify(data) : undefined,
-    });
+    const response = await this.axiosInstance.patch<T>(endpoint, data);
+    return response.data;
   }
 
   async delete<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'DELETE' });
+    const response = await this.axiosInstance.delete<T>(endpoint);
+    return response.data;
   }
 }

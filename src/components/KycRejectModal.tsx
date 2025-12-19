@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import Modal from './Modal';
+import { useState } from "react";
+import Modal from "./Modal";
 
 interface KycRejectModalProps {
   isOpen: boolean;
@@ -13,32 +13,34 @@ export default function KycRejectModal({
   isOpen,
   onClose,
   onConfirm,
-  submissionId,
+  submissionId: _submissionId,
   isLoading = false,
 }: KycRejectModalProps) {
-  const [reason, setReason] = useState('');
+  const [reason, setReason] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (reason.trim()) {
       onConfirm(reason.trim());
-      setReason('');
+      setReason("");
     }
   };
 
   const handleClose = () => {
-    setReason('');
+    setReason("");
     onClose();
   };
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Reject KYC Submission">
       <form onSubmit={handleSubmit}>
-        <p style={{ marginBottom: '1rem', color: 'rgba(255, 255, 255, 0.7)' }}>
+        <p className="mb-4 text-muted-foreground">
           Please provide a reason for rejecting this KYC submission.
         </p>
         <div className="form-group">
-          <label htmlFor="rejection-reason">Rejection Reason:</label>
+          <label htmlFor="rejection-reason" className="text-foreground">
+            Rejection Reason:
+          </label>
           <textarea
             id="rejection-reason"
             value={reason}
@@ -47,19 +49,21 @@ export default function KycRejectModal({
             rows={4}
             placeholder="Enter the reason for rejection..."
             disabled={isLoading}
+            className="w-full px-3 py-3 rounded border text-base transition-colors focus:outline-none resize-y font-inherit"
             style={{
-              width: '100%',
-              padding: '0.75rem',
-              border: '1px solid #3a3a3a',
-              borderRadius: '4px',
-              background: '#1a1a1a',
-              color: 'rgba(255, 255, 255, 0.87)',
-              fontFamily: 'inherit',
-              resize: 'vertical',
+              borderColor: "hsl(var(--input))",
+              backgroundColor: "hsl(var(--background))",
+              color: "hsl(var(--foreground))",
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = "hsl(var(--ring))";
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = "hsl(var(--input))";
             }}
           />
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+        <div className="flex gap-2 justify-end mt-6">
           <button
             type="button"
             className="btn-secondary"
@@ -73,11 +77,10 @@ export default function KycRejectModal({
             className="btn-primary"
             disabled={isLoading || !reason.trim()}
           >
-            {isLoading ? 'Rejecting...' : 'Reject Submission'}
+            {isLoading ? "Rejecting..." : "Reject Submission"}
           </button>
         </div>
       </form>
     </Modal>
   );
 }
-
