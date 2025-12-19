@@ -1,12 +1,37 @@
 // KYC Types
+export type KycStatus = 'pending' | 'approved' | 'rejected';
+
+export interface KycSubmissionAddress {
+  street?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  zipCode?: string;
+}
+
+// For list endpoint (KycSubmissionListItem)
 export interface KycSubmission {
-  id: string;
-  address: string;
-  status: string;
+  submissionId: string;
+  userId: string;
+  walletAddress?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  status: KycStatus;
   submittedAt: string;
   reviewedAt?: string;
+  documentType: string;
+  // Detail endpoint adds these fields:
+  id?: string;
+  phoneNumber?: string;
+  dateOfBirth?: string;
+  nationality?: string;
+  documentNumber?: string;
+  address?: KycSubmissionAddress;
+  mediaUrls?: string[];
   reviewedBy?: string;
   rejectionReason?: string;
+  updatedAt?: string;
 }
 
 // Bank Types

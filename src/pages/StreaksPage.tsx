@@ -7,8 +7,16 @@ import { Select, SelectItem } from "../components/ui/Select";
 import { Input } from "../components/ui/Input";
 import { Dialog } from "../components/ui/Dialog";
 import DateRangeFilter from "../components/DateRangeFilter";
-import { useApproveStreaks, useRejectStreaks } from "../hooks/useStreakMutations";
-import { formatAddress, formatDate, getStatusLabel, getStatusColor } from "../helpers/format";
+import {
+  useApproveStreaks,
+  useRejectStreaks,
+} from "../hooks/useStreakMutations";
+import {
+  formatAddress,
+  formatDate,
+  getStatusLabel,
+  getStatusColor,
+} from "../helpers/format";
 import type { StreakSubmission, StreakSubmissionStatus } from "../types";
 import { parseUnits } from "viem";
 
@@ -18,7 +26,8 @@ export default function StreaksPage() {
   const [userFilter, setUserFilter] = useState("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
-  const [selectedSubmission, setSelectedSubmission] = useState<StreakSubmission | null>(null);
+  const [selectedSubmission, setSelectedSubmission] =
+    useState<StreakSubmission | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogType, setDialogType] = useState<"approve" | "reject">("approve");
   const [amount, setAmount] = useState("");
@@ -145,7 +154,7 @@ export default function StreaksPage() {
     {
       header: "Amount",
       accessor: (row: StreakSubmission) =>
-        row.rewardAmount ? `${row.rewardAmount} VET` : "-",
+        row.rewardAmount ? `${row.rewardAmount} B3TR` : "-",
     },
     {
       header: "Actions",
@@ -181,9 +190,11 @@ export default function StreaksPage() {
   ];
 
   return (
-      <div className="p-6">
+    <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground mb-4">Streak Submissions</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-4">
+          Streak Submissions
+        </h1>
         <div className="flex gap-4 items-center">
           <Select
             value={statusFilter}
@@ -225,14 +236,16 @@ export default function StreaksPage() {
       <Dialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        title={dialogType === "approve" ? "Approve Submission" : "Reject Submission"}
+        title={
+          dialogType === "approve" ? "Approve Submission" : "Reject Submission"
+        }
         size="md"
       >
         {dialogType === "approve" ? (
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
-                Amount (VET)
+                Amount (B3TR)
               </label>
               <Input
                 type="number"
@@ -298,4 +311,3 @@ export default function StreaksPage() {
     </div>
   );
 }
-

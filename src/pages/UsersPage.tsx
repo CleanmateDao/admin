@@ -85,11 +85,11 @@ export default function UsersPage() {
     },
     {
       header: "Total Rewards",
-      accessor: (row: User) => `${row.totalRewardsEarned} VET`,
+      accessor: (row: User) => `${row.totalRewardsEarned} B3TR`,
     },
     {
       header: "Pending Rewards",
-      accessor: (row: User) => `${row.pendingRewards} VET`,
+      accessor: (row: User) => `${row.pendingRewards} B3TR`,
     },
   ];
 

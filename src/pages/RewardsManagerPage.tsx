@@ -103,7 +103,9 @@ export default function RewardsManagerPage() {
 
     // Validate cleanup ID format (should be a valid address)
     if (!/^0x[a-fA-F0-9]{40}$/.test(cleanupId)) {
-      setCleanupError("Invalid cleanup ID format. Please enter a valid address.");
+      setCleanupError(
+        "Invalid cleanup ID format. Please enter a valid address."
+      );
       return;
     }
 
@@ -115,7 +117,9 @@ export default function RewardsManagerPage() {
   useEffect(() => {
     if (cleanupLoadError && selectedCleanup) {
       setCleanupError(
-        `Failed to load cleanup: ${cleanupLoadError.message || "Cleanup not found"}`
+        `Failed to load cleanup: ${
+          cleanupLoadError.message || "Cleanup not found"
+        }`
       );
       setParticipantRewards([{ address: "", amount: "" }]);
     }
@@ -129,10 +133,17 @@ export default function RewardsManagerPage() {
       selectedCleanupData === null &&
       !cleanupLoadError
     ) {
-      setCleanupError("Cleanup not found. Please check the cleanup ID and try again.");
+      setCleanupError(
+        "Cleanup not found. Please check the cleanup ID and try again."
+      );
       setParticipantRewards([{ address: "", amount: "" }]);
     }
-  }, [selectedCleanup, isLoadingCleanup, selectedCleanupData, cleanupLoadError]);
+  }, [
+    selectedCleanup,
+    isLoadingCleanup,
+    selectedCleanupData,
+    cleanupLoadError,
+  ]);
 
   // Auto-load participants when cleanup is selected and validated
   useEffect(() => {
@@ -238,10 +249,7 @@ export default function RewardsManagerPage() {
   }, [userQueries, participantAddresses]);
 
   const handleAddRecipient = () => {
-    setRecipients([
-      ...recipients,
-      { address: "", amount: "", rewardType: 2 },
-    ]);
+    setRecipients([...recipients, { address: "", amount: "", rewardType: 2 }]);
   };
 
   const handleRemoveRecipient = (index: number) => {
@@ -302,7 +310,6 @@ export default function RewardsManagerPage() {
     updated[index] = { ...updated[index], [field]: value };
     setParticipantRewards(updated);
   };
-
 
   const handleDistributeRewards = () => {
     if (!selectedCleanup) {
@@ -366,17 +373,16 @@ export default function RewardsManagerPage() {
   };
 
   const handleRemoveFromStreakCart = (submissionId: string) => {
-    setStreakCart(streakCart.filter((item) => item.submissionId !== submissionId));
+    setStreakCart(
+      streakCart.filter((item) => item.submissionId !== submissionId)
+    );
   };
 
   const handleClearStreakCart = () => {
     setStreakCart([]);
   };
 
-  const handleUpdateCartItemAmount = (
-    submissionId: string,
-    amount: string
-  ) => {
+  const handleUpdateCartItemAmount = (submissionId: string, amount: string) => {
     setStreakCart(
       streakCart.map((item) =>
         item.submissionId === submissionId ? { ...item, amount } : item
@@ -543,7 +549,9 @@ export default function RewardsManagerPage() {
               Distribute Cleanup Rewards
             </h2>
             <p className="text-sm text-muted-foreground">
-              Add a completed cleanup to your cart from the Cleanups page or Cleanup detail page, then review participants and distribute rewards here.
+              Add a completed cleanup to your cart from the Cleanups page or
+              Cleanup detail page, then review participants and distribute
+              rewards here.
             </p>
           </div>
 
@@ -566,7 +574,8 @@ export default function RewardsManagerPage() {
             {!selectedCleanup ? (
               <div className="p-8 text-center border border-border rounded-lg bg-muted">
                 <p className="text-muted-foreground">
-                  Your cart is empty. Add a cleanup from the Cleanups page or Cleanup detail page.
+                  Your cart is empty. Add a cleanup from the Cleanups page or
+                  Cleanup detail page.
                 </p>
                 <div className="mt-4">
                   <label className="block text-sm text-muted-foreground mb-2">
@@ -623,9 +632,11 @@ export default function RewardsManagerPage() {
                         )}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {selectedCleanupData.participants.filter(
-                          (p) => p.status === "accepted"
-                        ).length}{" "}
+                        {
+                          selectedCleanupData.participants.filter(
+                            (p) => p.status === "accepted"
+                          ).length
+                        }{" "}
                         accepted participants
                       </p>
                     </div>
@@ -763,7 +774,8 @@ export default function RewardsManagerPage() {
               Distribute Streak Rewards
             </h2>
             <p className="text-sm text-muted-foreground">
-              Add approved streak submissions to your cart from the Streaks page or Streak detail page, then review and distribute rewards here.
+              Add approved streak submissions to your cart from the Streaks page
+              or Streak detail page, then review and distribute rewards here.
             </p>
           </div>
 
@@ -786,7 +798,8 @@ export default function RewardsManagerPage() {
             {streakCart.length === 0 ? (
               <div className="p-8 text-center border border-border rounded-lg bg-muted">
                 <p className="text-muted-foreground">
-                  Your cart is empty. Add streak submissions from the list above.
+                  Your cart is empty. Add streak submissions from the list
+                  above.
                 </p>
               </div>
             ) : (
@@ -864,7 +877,6 @@ export default function RewardsManagerPage() {
         </div>
       )}
 
-
       <Dialog
         open={showSendDialog}
         onOpenChange={setShowSendDialog}
@@ -887,7 +899,7 @@ export default function RewardsManagerPage() {
                     {formatAddress(recipient.address)}
                   </p>
                   <p className="text-sm text-foreground">
-                    {recipient.amount} VET - Type:{" "}
+                    {recipient.amount} B3TR - Type:{" "}
                     {recipient.rewardType === 0
                       ? "Referral"
                       : recipient.rewardType === 1
@@ -995,4 +1007,3 @@ export default function RewardsManagerPage() {
     </div>
   );
 }
-

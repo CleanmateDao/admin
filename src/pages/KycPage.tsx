@@ -48,20 +48,61 @@ export default function KycPage() {
   );
 
   const { data: submissionDetails } = useKycSubmissionDetails(
-    selectedSubmission?.id || null
+    selectedSubmission?.submissionId || null
   );
 
   const { updateStatus, isUpdating } = useKycMutations();
 
+  const getStatusLabel = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return 'Pending';
+      case 'approved':
+        return 'Approved';
+      case 'rejected':
+        return 'Rejected';
+      default:
+        return status;
+    }
+  };
+
   const columns: ColumnDef<KycSubmission>[] = [
     {
-      accessorKey: "address",
-      header: "Address",
+      accessorKey: "firstName",
+      header: "Name",
+      cell: (info: CellContext<KycSubmission, unknown>) => {
+        const row = info.row.original;
+        return `${row.firstName} ${row.lastName}`;
+      },
+    },
+    {
+      accessorKey: "email",
+      header: "Email",
       cell: (info: CellContext<KycSubmission, unknown>) => (
-        <span style={{ fontFamily: "monospace" }}>
-          {info.getValue() as string}
-        </span>
+        <span>{info.getValue() as string}</span>
       ),
+    },
+    {
+      accessorKey: "walletAddress",
+      header: "Wallet Address",
+      cell: (info: CellContext<KycSubmission, unknown>) => {
+        const address = info.getValue() as string | undefined;
+        return address ? (
+          <span style={{ fontFamily: "monospace", fontSize: "0.875rem" }}>
+            {address.length > 20 ? `${address.slice(0, 10)}...${address.slice(-8)}` : address}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">N/A</span>
+        );
+      },
+    },
+    {
+      accessorKey: "documentType",
+      header: "Document Type",
+      cell: (info: CellContext<KycSubmission, unknown>) => {
+        const docType = info.getValue() as string;
+        return docType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+      },
     },
     {
       accessorKey: "status",
@@ -70,7 +111,7 @@ export default function KycPage() {
         const status = info.getValue() as string;
         return (
           <span className={`status-badge ${status.toLowerCase()}`}>
-            {status}
+            {getStatusLabel(status)}
           </span>
         );
       },
@@ -87,7 +128,7 @@ export default function KycPage() {
       cell: (info: CellContext<KycSubmission, unknown>) => (
         <button
           className="btn-secondary"
-          onClick={() => navigate(`/kyc/${info.row.original.id}`)}
+          onClick={() => navigate(`/kyc/${info.row.original.submissionId}`)}
         >
           View
         </button>
@@ -113,10 +154,15 @@ export default function KycPage() {
       filterValue: string
     ) => {
       const search = filterValue.toLowerCase();
+      const submission = row.original;
       return (
-        row.original.address.toLowerCase().includes(search) ||
-        row.original.status.toLowerCase().includes(search) ||
-        row.original.id.toLowerCase().includes(search)
+        submission.firstName.toLowerCase().includes(search) ||
+        submission.lastName.toLowerCase().includes(search) ||
+        submission.email.toLowerCase().includes(search) ||
+        (submission.walletAddress?.toLowerCase().includes(search) ?? false) ||
+        submission.status.toLowerCase().includes(search) ||
+        submission.submissionId.toLowerCase().includes(search) ||
+        submission.userId.toLowerCase().includes(search)
       );
     }) as FilterFn<KycSubmission>,
     state: {
@@ -153,8 +199,8 @@ export default function KycPage() {
     if (!selectedSubmission) return;
     updateStatus(
       {
-        submissionId: selectedSubmission.id,
-        status: "VERIFIED",
+        submissionId: selectedSubmission.submissionId,
+        status: "approved",
       },
       {
         onSuccess: () => {
@@ -169,8 +215,8 @@ export default function KycPage() {
     if (!selectedSubmission) return;
     updateStatus(
       {
-        submissionId: selectedSubmission.id,
-        status: "REJECTED",
+        submissionId: selectedSubmission.submissionId,
+        status: "rejected",
         rejectionReason: reason,
       },
       {
@@ -198,11 +244,11 @@ export default function KycPage() {
 
   const stats = {
     total: submissions.length,
-    pending: submissions.filter((s: KycSubmission) => s.status === "PENDING")
+    pending: submissions.filter((s: KycSubmission) => s.status === "pending")
       .length,
-    verified: submissions.filter((s: KycSubmission) => s.status === "VERIFIED")
+    approved: submissions.filter((s: KycSubmission) => s.status === "approved")
       .length,
-    rejected: submissions.filter((s: KycSubmission) => s.status === "REJECTED")
+    rejected: submissions.filter((s: KycSubmission) => s.status === "rejected")
       .length,
   };
 
@@ -231,8 +277,8 @@ export default function KycPage() {
           <div className="value">{stats.pending}</div>
         </div>
         <div className="stat-card">
-          <h3>Verified</h3>
-          <div className="value">{stats.verified}</div>
+          <h3>Approved</h3>
+          <div className="value">{stats.approved}</div>
         </div>
         <div className="stat-card">
           <h3>Rejected</h3>
@@ -253,15 +299,15 @@ export default function KycPage() {
                 className="filter-select"
               >
                 <option value="">All Statuses</option>
-                <option value="PENDING">Pending</option>
-                <option value="VERIFIED">Verified</option>
-                <option value="REJECTED">Rejected</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
               </select>
             </FilterBar>
             <SearchBar
               value={searchQuery}
               onChange={setSearchQuery}
-              placeholder="Search by address or ID..."
+              placeholder="Search by name, email, wallet, or ID..."
             />
           </div>
         </div>
@@ -341,7 +387,7 @@ export default function KycPage() {
               <pre className="bg-muted p-4 rounded overflow-auto text-foreground mb-4 border border-border">
                 {JSON.stringify(submissionDetails, null, 2)}
               </pre>
-              {submissionDetails.status === "PENDING" && (
+              {submissionDetails.status === "pending" && (
                 <div className="flex gap-2">
                   <button
                     className="btn-primary"
@@ -370,8 +416,8 @@ export default function KycPage() {
         isOpen={showApproveModal}
         onClose={() => setShowApproveModal(false)}
         onConfirm={handleApprove}
-        submissionId={selectedSubmission?.id}
-        address={selectedSubmission?.address}
+        submissionId={selectedSubmission?.submissionId}
+        address={selectedSubmission?.walletAddress}
         isLoading={isUpdating}
       />
 
@@ -379,7 +425,7 @@ export default function KycPage() {
         isOpen={showRejectModal}
         onClose={() => setShowRejectModal(false)}
         onConfirm={handleReject}
-        submissionId={selectedSubmission?.id}
+        submissionId={selectedSubmission?.submissionId}
         isLoading={isUpdating}
       />
     </div>

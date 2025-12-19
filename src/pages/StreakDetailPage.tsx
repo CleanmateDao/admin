@@ -143,7 +143,7 @@ export default function StreakDetailPage() {
               <label className="text-sm text-muted-foreground">
                 Reward Amount
               </label>
-              <p className="text-foreground">{submission.rewardAmount} VET</p>
+              <p className="text-foreground">{submission.rewardAmount} B3TR</p>
             </div>
           )}
           {submission.rejectionReason && (
@@ -232,7 +232,7 @@ export default function StreakDetailPage() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
-                Amount (VET)
+                Amount (B3TR)
               </label>
               <Input
                 type="number"

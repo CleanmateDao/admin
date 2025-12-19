@@ -74,10 +74,34 @@ export function useKycMutations() {
     },
   });
 
+  const setOrganizerStatusMutation = useMutation({
+    mutationFn: async ({
+      userAddress,
+      isOrganizer,
+    }: {
+      userAddress: string;
+      isOrganizer: boolean;
+    }) => {
+      if (!apiClient) throw new Error("Not authenticated");
+      return apiClient.post("/kyc/admin/set-organizer-status", {
+        userAddress,
+        isOrganizer,
+      });
+    },
+    onSuccess: () => {
+      // Invalidate user queries to refresh the user data
+      queryClient.invalidateQueries({ queryKey: ["user"] });
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
+  });
+
   return {
     updateStatus: updateStatusMutation.mutate,
     updateStatusAsync: updateStatusMutation.mutateAsync,
     isUpdating: updateStatusMutation.isPending,
+    setOrganizerStatus: setOrganizerStatusMutation.mutate,
+    setOrganizerStatusAsync: setOrganizerStatusMutation.mutateAsync,
+    isSettingOrganizerStatus: setOrganizerStatusMutation.isPending,
   };
 }
 

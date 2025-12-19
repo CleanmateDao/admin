@@ -286,7 +286,7 @@ export default function CleanupDetailPage() {
                   </p>
                   {participant.rewardEarned && (
                     <p className="text-sm text-status-approved">
-                      Reward: {participant.rewardEarned} VET
+                      Reward: {participant.rewardEarned} B3TR
                     </p>
                   )}
                 </div>
