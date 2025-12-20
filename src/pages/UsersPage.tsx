@@ -8,6 +8,7 @@ import {
   formatAddress,
   formatDate,
   getKycStatusLabel,
+  getUserName,
 } from "../helpers/format";
 import type { User } from "../types";
 
@@ -48,6 +49,14 @@ export default function UsersPage() {
     {
       header: "Address",
       accessor: (row: User) => formatAddress(row.id),
+    },
+    {
+      header: "Name",
+      accessor: (row: User) => (
+        <span className="truncate max-w-xs" title={getUserName(row.metadata)}>
+          {getUserName(row.metadata)}
+        </span>
+      ),
     },
     {
       header: "Email",

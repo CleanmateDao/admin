@@ -11,6 +11,7 @@ import {
   formatAddress,
   formatDate,
   getCleanupStatusLabel,
+  parseCleanupMetadata,
 } from "../helpers/format";
 import { useState } from "react";
 
@@ -148,10 +149,99 @@ export default function CleanupDetailPage() {
           <label className="text-sm text-muted-foreground mb-2 block">
             Metadata
           </label>
-          <div className="bg-muted rounded p-4 border border-border">
-            <pre className="text-sm text-foreground whitespace-pre-wrap">
-              {cleanup.metadata}
-            </pre>
+          <div className="bg-muted rounded p-4 border border-border space-y-4">
+            {(() => {
+              const parsed = parseCleanupMetadata(cleanup.metadata);
+              if (!parsed) {
+                return (
+                  <pre className="text-sm text-foreground whitespace-pre-wrap">
+                    {cleanup.metadata || "No metadata"}
+                  </pre>
+                );
+              }
+
+              return (
+                <div className="space-y-3">
+                  {parsed.title && (
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-1">
+                        Title
+                      </label>
+                      <p className="text-sm text-foreground font-medium">
+                        {parsed.title}
+                      </p>
+                    </div>
+                  )}
+                  {parsed.description && (
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-1">
+                        Description
+                      </label>
+                      <div
+                        className="text-sm text-foreground prose prose-sm dark:prose-invert max-w-none"
+                        dangerouslySetInnerHTML={{
+                          __html: parsed.description,
+                        }}
+                      />
+                    </div>
+                  )}
+                  {parsed.category && (
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-1">
+                        Category (from metadata)
+                      </label>
+                      <p className="text-sm text-foreground">
+                        {parsed.category}
+                      </p>
+                    </div>
+                  )}
+                  {parsed.media && parsed.media.length > 0 && (
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-2">
+                        Media from Metadata ({parsed.media.length})
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {parsed.media.map((item, index) => (
+                          <div
+                            key={index}
+                            className="bg-background rounded p-2 border border-border"
+                          >
+                            {item.type === "video" ? (
+                              <div className="w-full h-24 bg-secondary rounded flex items-center justify-center">
+                                <span className="text-xs text-muted-foreground">
+                                  Video
+                                </span>
+                              </div>
+                            ) : (
+                              <img
+                                src={item.ipfsHash}
+                                alt={item.name || "Media"}
+                                className="w-full h-24 object-cover rounded"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src =
+                                    "/placeholder.svg";
+                                }}
+                              />
+                            )}
+                            <p className="text-xs text-muted-foreground mt-1 truncate">
+                              {item.name || "Media"}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="pt-2 border-t border-border">
+                    <label className="text-xs text-muted-foreground block mb-1">
+                      Raw JSON
+                    </label>
+                    <pre className="text-xs text-muted-foreground whitespace-pre-wrap overflow-auto max-h-40">
+                      {cleanup.metadata}
+                    </pre>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
 

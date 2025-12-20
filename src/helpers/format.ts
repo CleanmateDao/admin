@@ -74,3 +74,124 @@ export const getKycStatusLabel = (status: number): string => {
       return "Unknown";
   }
 };
+
+/**
+ * Parse cleanup metadata from JSON string or plain string
+ */
+export const parseCleanupMetadata = (
+  metadata: string | null
+): {
+  title?: string;
+  description?: string;
+  category?: string;
+  media?: Array<{
+    ipfsHash: string;
+    type: string;
+    name: string;
+  }>;
+} | null => {
+  if (!metadata) return null;
+
+  try {
+    const parsed = JSON.parse(metadata);
+    if (typeof parsed === "object" && parsed !== null) {
+      return parsed;
+    }
+  } catch (error) {
+    // Not JSON, treat as plain string
+    return {
+      title: "Untitled Cleanup",
+      description: metadata.trim(),
+    };
+  }
+
+  return null;
+};
+
+/**
+ * Get cleanup title from metadata
+ */
+export const getCleanupTitle = (metadata: string | null): string => {
+  const parsed = parseCleanupMetadata(metadata);
+  return parsed?.title || "Untitled Cleanup";
+};
+
+/**
+ * Get cleanup description from metadata
+ */
+export const getCleanupDescription = (metadata: string | null): string => {
+  const parsed = parseCleanupMetadata(metadata);
+  return parsed?.description || "";
+};
+
+/**
+ * Parse user metadata from JSON string or plain string
+ */
+export const parseUserMetadata = (
+  metadata: string | null
+): {
+  name?: string;
+  bio?: string;
+  photo?: string;
+  location?: string | { state?: string; country?: string };
+  interests?: string[];
+} | null => {
+  if (!metadata) return null;
+
+  try {
+    const parsed = JSON.parse(metadata);
+    if (typeof parsed === "object" && parsed !== null) {
+      return parsed;
+    }
+  } catch (error) {
+    // Not JSON, treat as plain string (legacy format - might be name)
+    return {
+      name: metadata.trim(),
+    };
+  }
+
+  return null;
+};
+
+/**
+ * Get user name from metadata
+ */
+export const getUserName = (metadata: string | null): string => {
+  const parsed = parseUserMetadata(metadata);
+  return parsed?.name || "Unknown User";
+};
+
+/**
+ * Get user location from metadata
+ */
+export const getUserLocation = (
+  metadata: string | null
+): { city?: string; country?: string; state?: string } | null => {
+  const parsed = parseUserMetadata(metadata);
+  if (!parsed?.location) return null;
+
+  if (typeof parsed.location === "object") {
+    return {
+      country: parsed.location.country,
+      state: parsed.location.state,
+    };
+  }
+
+  if (typeof parsed.location === "string") {
+    // Legacy format: "City, Country" or "Country"
+    const parts = parsed.location
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean);
+    if (parts.length === 0) return null;
+    if (parts.length === 1) {
+      return { country: parts[0] };
+    }
+    return {
+      city: parts[0],
+      country: parts[parts.length - 1],
+    };
+  }
+
+  return null;
+};

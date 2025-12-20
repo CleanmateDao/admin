@@ -6,6 +6,9 @@ import {
   formatAddress,
   formatDate,
   getKycStatusLabel,
+  parseUserMetadata,
+  getUserName,
+  getUserLocation,
 } from "../helpers/format";
 
 export default function UserDetailPage() {
@@ -176,12 +179,97 @@ export default function UserDetailPage() {
         {user.metadata && (
           <div>
             <label className="text-sm text-muted-foreground mb-2 block">
-              Metadata
+              Profile Metadata
             </label>
-            <div className="bg-muted rounded p-4 border border-border">
-              <pre className="text-sm text-foreground whitespace-pre-wrap">
-                {user.metadata}
-              </pre>
+            <div className="bg-muted rounded p-4 border border-border space-y-4">
+              {(() => {
+                const parsed = parseUserMetadata(user.metadata);
+                if (!parsed) {
+                  return (
+                    <pre className="text-sm text-foreground whitespace-pre-wrap">
+                      {user.metadata || "No metadata"}
+                    </pre>
+                  );
+                }
+
+                const location = getUserLocation(user.metadata);
+
+                return (
+                  <div className="space-y-3">
+                    {parsed.name && (
+                      <div>
+                        <label className="text-xs text-muted-foreground block mb-1">
+                          Name
+                        </label>
+                        <p className="text-sm text-foreground font-medium">
+                          {parsed.name}
+                        </p>
+                      </div>
+                    )}
+                    {parsed.bio && (
+                      <div>
+                        <label className="text-xs text-muted-foreground block mb-1">
+                          Bio
+                        </label>
+                        <p className="text-sm text-foreground">{parsed.bio}</p>
+                      </div>
+                    )}
+                    {parsed.photo && (
+                      <div>
+                        <label className="text-xs text-muted-foreground block mb-1">
+                          Profile Photo
+                        </label>
+                        <img
+                          src={parsed.photo}
+                          alt="Profile"
+                          className="w-24 h-24 object-cover rounded-full border border-border"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src =
+                              "/placeholder.svg";
+                          }}
+                        />
+                      </div>
+                    )}
+                    {location && (
+                      <div>
+                        <label className="text-xs text-muted-foreground block mb-1">
+                          Location
+                        </label>
+                        <p className="text-sm text-foreground">
+                          {[location.city, location.state, location.country]
+                            .filter(Boolean)
+                            .join(", ") || "N/A"}
+                        </p>
+                      </div>
+                    )}
+                    {parsed.interests && parsed.interests.length > 0 && (
+                      <div>
+                        <label className="text-xs text-muted-foreground block mb-1">
+                          Interests
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {parsed.interests.map((interest, index) => (
+                            <span
+                              key={index}
+                              className="px-2 py-1 text-xs bg-primary/20 text-primary rounded"
+                            >
+                              {interest}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="pt-2 border-t border-border">
+                      <label className="text-xs text-muted-foreground block mb-1">
+                        Raw JSON
+                      </label>
+                      <pre className="text-xs text-muted-foreground whitespace-pre-wrap overflow-auto max-h-40">
+                        {user.metadata}
+                      </pre>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}

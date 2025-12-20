@@ -5,7 +5,12 @@ import { InfiniteScrollTable } from "../components/InfiniteScrollTable";
 import { Select, SelectItem } from "../components/ui/Select";
 import { Input } from "../components/ui/Input";
 import DateRangeFilter from "../components/DateRangeFilter";
-import { formatAddress, formatDate, getCleanupStatusLabel } from "../helpers/format";
+import {
+  formatAddress,
+  formatDate,
+  getCleanupStatusLabel,
+  getCleanupTitle,
+} from "../helpers/format";
 import type { Cleanup } from "../types";
 
 export default function CleanupsPage() {
@@ -86,9 +91,14 @@ export default function CleanupsPage() {
       accessor: (row: Cleanup) => formatAddress(row.organizer),
     },
     {
-      header: "Metadata",
+      header: "Title",
       accessor: (row: Cleanup) => (
-        <span className="truncate max-w-xs">{row.metadata}</span>
+        <span
+          className="truncate max-w-xs"
+          title={getCleanupTitle(row.metadata)}
+        >
+          {getCleanupTitle(row.metadata)}
+        </span>
       ),
     },
     {
@@ -118,7 +128,7 @@ export default function CleanupsPage() {
   ];
 
   return (
-      <div className="p-6">
+    <div className="p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-foreground mb-4">Cleanups</h1>
         <div className="flex gap-4 items-center">
@@ -172,4 +182,3 @@ export default function CleanupsPage() {
     </div>
   );
 }
-
