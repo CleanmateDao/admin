@@ -1,4 +1,13 @@
-// Subgraph Types
+// Re-export SDK types
+export type {
+  User,
+  Cleanup as SDKCleanup,
+  CleanupParticipant as SDKCleanupParticipant,
+  StreakSubmission as SDKStreakSubmission,
+  UserStreakStats,
+} from "@cleanmate/cip-sdk";
+
+// Admin-specific type extensions and adapters
 export type StreakSubmissionStatus = 0 | 1 | 2; // 0=PENDING, 1=APPROVED, 2=REJECTED
 
 export interface StreakSubmissionMedia {
@@ -8,69 +17,7 @@ export interface StreakSubmissionMedia {
   index: string;
 }
 
-export interface StreakSubmission {
-  id: string;
-  user: string;
-  submissionId: string;
-  metadata: string;
-  status: StreakSubmissionStatus;
-  submittedAt: string;
-  reviewedAt: string | null;
-  amount: string | null;
-  rewardAmount: string | null;
-  rejectionReason: string | null;
-  ipfsHashes: string[];
-  mimetypes: string[];
-  blockNumber: string;
-  transactionHash: string;
-  media: StreakSubmissionMedia[];
-}
-
-export interface Cleanup {
-  id: string;
-  organizer: string;
-  metadata: string;
-  category: string | null;
-  date: string;
-  startTime: string | null;
-  endTime: string | null;
-  maxParticipants: string | null;
-  status: number;
-  published: boolean;
-  publishedAt: string | null;
-  unpublishedAt: string | null;
-  createdAt: string;
-  updatedAt: string | null;
-  proofOfWorkSubmitted: boolean;
-  proofOfWorkMediaCount: string | null;
-  proofOfWorkSubmittedAt: string | null;
-  location: string | null;
-  city: string | null;
-  country: string | null;
-  latitude: string | null;
-  longitude: string | null;
-  rewardAmount: string | null;
-  rewardsDistributed: boolean;
-  rewardsTotalAmount: string | null;
-  rewardsParticipantCount: string | null;
-  rewardsDistributedAt: string | null;
-  participants: CleanupParticipant[];
-  medias: CleanupMedia[];
-  proofOfWorkMedia: ProofOfWorkMedia[];
-}
-
-export interface CleanupParticipant {
-  id: string;
-  cleanup: Cleanup;
-  participant: string;
-  appliedAt: string;
-  status: "applied" | "accepted" | "rejected";
-  acceptedAt: string | null;
-  rejectedAt: string | null;
-  rewardEarned: string;
-  rewardEarnedAt: string | null;
-}
-
+// Extended types for admin app compatibility
 export interface CleanupMedia {
   id: string;
   cleanup: Cleanup;
@@ -88,33 +35,63 @@ export interface ProofOfWorkMedia {
   submittedAt: string;
 }
 
-export interface User {
-  id: string;
-  metadata: string | null;
-  email: string | null;
-  emailVerified: boolean;
-  kycStatus: number;
-  referralCode: string | null;
-  referrer: string | null;
-  isOrganizer: boolean;
+// Extended Cleanup type with admin-specific fields
+import type { Cleanup as SDKCleanupType } from "@cleanmate/cip-sdk";
+export interface Cleanup extends Omit<SDKCleanupType, "participants"> {
+  // Convert number fields to strings for compatibility
+  date: string;
+  startTime: string | null;
+  endTime: string | null;
+  maxParticipants: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+  publishedAt: string | null;
+  unpublishedAt: string | null;
+  proofOfWorkSubmittedAt: string | null;
+  rewardsDistributedAt: string | null;
+  proofOfWorkMediaCount: string | null;
+  participants: CleanupParticipant[];
+  medias: CleanupMedia[];
+  proofOfWorkMedia: ProofOfWorkMedia[];
+}
+
+// Extended CleanupParticipant type
+import type { CleanupParticipant as SDKCleanupParticipantType } from "@cleanmate/cip-sdk";
+export interface CleanupParticipant
+  extends Omit<
+    SDKCleanupParticipantType,
+    "cleanup" | "appliedAt" | "acceptedAt" | "rejectedAt" | "rewardEarnedAt"
+  > {
+  cleanup: Cleanup;
+  appliedAt: string;
+  acceptedAt: string | null;
+  rejectedAt: string | null;
+  rewardEarnedAt: string | null;
+}
+
+// Extended StreakSubmission type
+import type { StreakSubmission as SDKStreakSubmissionType } from "@cleanmate/cip-sdk";
+export interface StreakSubmission
+  extends Omit<
+    SDKStreakSubmissionType,
+    "submittedAt" | "reviewedAt" | "blockNumber"
+  > {
+  submittedAt: string;
+  reviewedAt: string | null;
+  blockNumber: string;
+  media: StreakSubmissionMedia[];
+}
+
+// Extended User type
+import type { User as SDKUserType } from "@cleanmate/cip-sdk";
+export interface User
+  extends Omit<
+    SDKUserType,
+    "registeredAt" | "emailVerifiedAt" | "lastProfileUpdateAt"
+  > {
   registeredAt: string;
   emailVerifiedAt: string | null;
   lastProfileUpdateAt: string | null;
-  totalRewardsEarned: string;
-  totalRewardsClaimed: string;
-  pendingRewards: string;
-}
-
-export interface UserStreakStats {
-  id: string;
-  user: string;
-  streakerCode: string | null;
-  totalSubmissions: string;
-  approvedSubmissions: string;
-  rejectedSubmissions: string;
-  pendingSubmissions: string;
-  totalAmount: string;
-  lastSubmissionAt: string | null;
 }
 
 // Filter Types

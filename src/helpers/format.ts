@@ -1,4 +1,8 @@
 import type { StreakSubmissionStatus } from "../types";
+import {
+  parseCleanupMetadata as parseCleanupMetadataCIP,
+  parseUserProfileMetadata,
+} from "@cleanmate/cip-sdk";
 
 export const formatAddress = (address: string): string => {
   if (!address || typeof address !== "string") return "";
@@ -92,6 +96,16 @@ export const parseCleanupMetadata = (
 } | null => {
   if (!metadata) return null;
 
+  // Try to parse using CIP metadata utilities first
+  try {
+    const parsedCIP = parseCleanupMetadataCIP(metadata);
+    if (parsedCIP) {
+      return parsedCIP;
+    }
+  } catch {
+    // CIP metadata not available, fall through to manual parsing
+  }
+
   try {
     const parsed = JSON.parse(metadata);
     if (typeof parsed === "object" && parsed !== null) {
@@ -137,6 +151,16 @@ export const parseUserMetadata = (
   interests?: string[];
 } | null => {
   if (!metadata) return null;
+
+  // Try to parse using CIP metadata utilities first
+  try {
+    const parsedCIP = parseUserProfileMetadata<string>(metadata);
+    if (parsedCIP) {
+      return parsedCIP;
+    }
+  } catch {
+    // CIP metadata not available, fall through to manual parsing
+  }
 
   try {
     const parsed = JSON.parse(metadata);

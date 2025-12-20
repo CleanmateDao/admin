@@ -1,108 +1,180 @@
 import { GraphQLClient } from "graphql-request";
+import {
+  GET_USER_QUERY,
+  GET_USERS_QUERY,
+  GET_CLEANUP_QUERY,
+  GET_CLEANUPS_QUERY,
+  GET_STREAK_SUBMISSION_QUERY,
+  GET_STREAK_SUBMISSIONS_QUERY,
+  type GetUserParams,
+  type GetUsersParams,
+  type GetCleanupParams,
+  type GetCleanupsParams,
+  type GetStreakSubmissionParams,
+  type GetStreakSubmissionsParams,
+  type User as SDKUser,
+  type Cleanup as SDKCleanup,
+  type StreakSubmission as SDKStreakSubmission,
+  type CleanupParticipant as SDKCleanupParticipant,
+  type User_filter,
+  type Cleanup_filter,
+  type StreakSubmission_filter,
+  type User_orderBy,
+  type Cleanup_orderBy,
+  type StreakSubmission_orderBy,
+  type OrderDirection,
+} from "@cleanmate/cip-sdk";
 import { SUBGRAPH_URL } from "../config/constants";
 import type {
-  StreakSubmission,
-  Cleanup,
-  User,
-  PaginationParams,
   StreakSubmissionFilters,
   CleanupFilters,
   UserFilters,
+  PaginationParams,
+  User,
+  Cleanup,
+  StreakSubmission,
+  CleanupParticipant,
 } from "../types";
 
 const client = new GraphQLClient(SUBGRAPH_URL);
+
+// Helper function to normalize addresses
+function normalizeAddress(address: string): string {
+  let normalized = address.toLowerCase();
+  if (!normalized.startsWith("0x")) {
+    normalized = "0x" + normalized;
+  }
+  return normalized;
+}
+
+// Helper to convert number/string to string (GraphQL BigInt comes as string)
+function toString(value: number | string | null | undefined): string | null {
+  if (value === null || value === undefined) return null;
+  return String(value);
+}
+
+// Transform SDK User to Admin User
+function transformUser(user: SDKUser): User {
+  return {
+    ...user,
+    registeredAt: toString(user.registeredAt) ?? "",
+    emailVerifiedAt: toString(user.emailVerifiedAt),
+    lastProfileUpdateAt: toString(user.lastProfileUpdateAt),
+  };
+}
+
+// Transform SDK CleanupParticipant to Admin CleanupParticipant
+function transformCleanupParticipant(
+  participant: SDKCleanupParticipant,
+  cleanup: Cleanup
+): CleanupParticipant {
+  return {
+    ...participant,
+    cleanup,
+    appliedAt: toString(participant.appliedAt) ?? "",
+    acceptedAt: toString(participant.acceptedAt),
+    rejectedAt: toString(participant.rejectedAt),
+    rewardEarnedAt: toString(participant.rewardEarnedAt),
+  };
+}
+
+// Transform SDK Cleanup to Admin Cleanup
+function transformCleanup(cleanup: SDKCleanup): Cleanup {
+  const transformed: Cleanup = {
+    ...cleanup,
+    date: toString(cleanup.date) ?? "",
+    startTime: toString(cleanup.startTime),
+    endTime: toString(cleanup.endTime),
+    maxParticipants: toString(cleanup.maxParticipants),
+    createdAt: toString(cleanup.createdAt) ?? "",
+    updatedAt: toString(cleanup.updatedAt),
+    publishedAt: toString(cleanup.publishedAt),
+    unpublishedAt: toString(cleanup.unpublishedAt),
+    proofOfWorkSubmittedAt: toString(cleanup.proofOfWorkSubmittedAt),
+    rewardsDistributedAt: toString(cleanup.rewardsDistributedAt),
+    proofOfWorkMediaCount: cleanup.proofOfWork
+      ? String(cleanup.proofOfWork.ipfsHashes.length)
+      : null,
+    participants: (cleanup.participants || []).map((p) =>
+      transformCleanupParticipant(p, {} as Cleanup)
+    ),
+    medias: [], // Not in SDK query, will be empty
+    proofOfWorkMedia: cleanup.proofOfWork
+      ? cleanup.proofOfWork.ipfsHashes.map((hash, index) => ({
+          id: `${cleanup.id}-pow-${index}`,
+          cleanup: {} as Cleanup,
+          url: `https://ipfs.io/ipfs/${hash}`,
+          mimeType: cleanup.proofOfWork!.mimetypes[index] || "image/jpeg",
+          uploadedAt: toString(cleanup.proofOfWorkSubmittedAt) ?? "",
+          submittedAt: toString(cleanup.proofOfWork!.submittedAt) ?? "",
+        }))
+      : [],
+  };
+  // Fix circular reference in participants
+  transformed.participants = (cleanup.participants || []).map((p) =>
+    transformCleanupParticipant(p, transformed)
+  );
+  return transformed;
+}
+
+// Transform SDK StreakSubmission to Admin StreakSubmission
+function transformStreakSubmission(
+  submission: SDKStreakSubmission
+): StreakSubmission {
+  return {
+    ...submission,
+    submittedAt: toString(submission.submittedAt) ?? "",
+    reviewedAt: toString(submission.reviewedAt),
+    blockNumber: toString(submission.blockNumber) ?? "",
+    media: submission.ipfsHashes.map((hash, index) => ({
+      id: `${submission.id}-media-${index}`,
+      ipfsHash: hash,
+      mimeType: submission.mimetypes[index] || "image/jpeg",
+      index: String(index),
+    })),
+  };
+}
 
 // Streak Submissions Queries
 export const getStreakSubmissions = async (
   filters: StreakSubmissionFilters = {},
   pagination: PaginationParams = { first: 20, skip: 0 }
 ): Promise<StreakSubmission[]> => {
-  const conditions: string[] = [];
+  const variables: GetStreakSubmissionsParams = {
+    first: pagination.first,
+    skip: pagination.skip,
+    orderBy: (pagination.orderBy as StreakSubmission_orderBy) || "submittedAt",
+    orderDirection: (pagination.orderDirection as OrderDirection) || "desc",
+  };
 
+  const where: StreakSubmission_filter = {};
   if (filters.status !== undefined) {
-    conditions.push(`status: ${filters.status}`);
+    where.status = filters.status;
   }
   if (filters.user) {
-    conditions.push(`user: "${filters.user.toLowerCase()}"`);
+    where.user = normalizeAddress(filters.user);
+  }
+  if (Object.keys(where).length > 0) {
+    variables.where = where;
   }
 
-  const whereClause =
-    conditions.length > 0 ? `where: { ${conditions.join(", ")} }` : "";
-
-  const query = `
-    query GetStreakSubmissions {
-      streakSubmissions(
-        ${whereClause}
-        first: ${pagination.first}
-        skip: ${pagination.skip}
-        orderBy: ${pagination.orderBy || "submittedAt"}
-        orderDirection: ${pagination.orderDirection || "desc"}
-      ) {
-        id
-        user
-        submissionId
-        metadata
-        status
-        submittedAt
-        reviewedAt
-        amount
-        rewardAmount
-        rejectionReason
-        ipfsHashes
-        mimetypes
-        blockNumber
-        transactionHash
-        media {
-          id
-          ipfsHash
-          mimeType
-          index
-        }
-      }
-    }
-  `;
-
-  const data = await client.request<{ streakSubmissions: StreakSubmission[] }>(
-    query
-  );
-  return data.streakSubmissions;
+  const response = await client.request<{
+    streakSubmissions: SDKStreakSubmission[];
+  }>(GET_STREAK_SUBMISSIONS_QUERY, variables);
+  return response.streakSubmissions.map(transformStreakSubmission);
 };
 
 export const getStreakSubmission = async (
   id: string
 ): Promise<StreakSubmission | null> => {
-  const query = `
-    query GetStreakSubmission($id: ID!) {
-      streakSubmission(id: $id) {
-        id
-        user
-        submissionId
-        metadata
-        status
-        submittedAt
-        reviewedAt
-        amount
-        rewardAmount
-        rejectionReason
-        ipfsHashes
-        mimetypes
-        blockNumber
-        transactionHash
-        media {
-          id
-          ipfsHash
-          mimeType
-          index
-        }
-      }
-    }
-  `;
-
-  const data = await client.request<{ streakSubmission: StreakSubmission | null }>(
-    query,
-    { id }
-  );
-  return data.streakSubmission;
+  const response = await client.request<{
+    streakSubmission: SDKStreakSubmission | null;
+  }>(GET_STREAK_SUBMISSION_QUERY, {
+    id,
+  } as GetStreakSubmissionParams);
+  return response.streakSubmission
+    ? transformStreakSubmission(response.streakSubmission)
+    : null;
 };
 
 // Cleanups Queries
@@ -110,150 +182,42 @@ export const getCleanups = async (
   filters: CleanupFilters = {},
   pagination: PaginationParams = { first: 20, skip: 0 }
 ): Promise<Cleanup[]> => {
-  const conditions: string[] = [];
+  const variables: GetCleanupsParams = {
+    first: pagination.first,
+    skip: pagination.skip,
+    orderBy: (pagination.orderBy as Cleanup_orderBy) || "createdAt",
+    orderDirection: (pagination.orderDirection as OrderDirection) || "desc",
+  };
 
+  const where: Cleanup_filter = {};
   if (filters.status !== undefined) {
-    conditions.push(`status: ${filters.status}`);
+    where.status = filters.status;
   }
   if (filters.organizer) {
-    conditions.push(`organizer: "${filters.organizer.toLowerCase()}"`);
+    where.organizer = normalizeAddress(filters.organizer);
   }
   if (filters.published !== undefined) {
-    conditions.push(`published: ${filters.published}`);
+    where.published = filters.published;
+  }
+  if (Object.keys(where).length > 0) {
+    variables.where = where;
   }
 
-  const whereClause =
-    conditions.length > 0 ? `where: { ${conditions.join(", ")} }` : "";
-
-  const query = `
-    query GetCleanups {
-      cleanups(
-        ${whereClause}
-        first: ${pagination.first}
-        skip: ${pagination.skip}
-        orderBy: ${pagination.orderBy || "createdAt"}
-        orderDirection: ${pagination.orderDirection || "desc"}
-      ) {
-        id
-        organizer
-        metadata
-        category
-        date
-        startTime
-        endTime
-        maxParticipants
-        status
-        published
-        publishedAt
-        unpublishedAt
-        createdAt
-        updatedAt
-        proofOfWorkSubmitted
-        proofOfWorkMediaCount
-        proofOfWorkSubmittedAt
-        location
-        city
-        country
-        latitude
-        longitude
-        rewardAmount
-        rewardsDistributed
-        rewardsTotalAmount
-        rewardsParticipantCount
-        rewardsDistributedAt
-        participants {
-          id
-          participant
-          appliedAt
-          status
-          acceptedAt
-          rejectedAt
-          rewardEarned
-          rewardEarnedAt
-        }
-        medias {
-          id
-          url
-          mimeType
-          createdAt
-        }
-        proofOfWorkMedia {
-          id
-          url
-          mimeType
-          uploadedAt
-          submittedAt
-        }
-      }
-    }
-  `;
-
-  const data = await client.request<{ cleanups: Cleanup[] }>(query);
-  return data.cleanups;
+  const response = await client.request<{ cleanups: SDKCleanup[] }>(
+    GET_CLEANUPS_QUERY,
+    variables
+  );
+  return response.cleanups.map(transformCleanup);
 };
 
 export const getCleanup = async (id: string): Promise<Cleanup | null> => {
-  const query = `
-    query GetCleanup($id: Bytes!) {
-      cleanup(id: $id) {
-        id
-        organizer
-        metadata
-        category
-        date
-        startTime
-        endTime
-        maxParticipants
-        status
-        published
-        publishedAt
-        unpublishedAt
-        createdAt
-        updatedAt
-        proofOfWorkSubmitted
-        proofOfWorkMediaCount
-        proofOfWorkSubmittedAt
-        location
-        city
-        country
-        latitude
-        longitude
-        rewardAmount
-        rewardsDistributed
-        rewardsTotalAmount
-        rewardsParticipantCount
-        rewardsDistributedAt
-        participants {
-          id
-          participant
-          appliedAt
-          status
-          acceptedAt
-          rejectedAt
-          rewardEarned
-          rewardEarnedAt
-        }
-        medias {
-          id
-          url
-          mimeType
-          createdAt
-        }
-        proofOfWorkMedia {
-          id
-          url
-          mimeType
-          uploadedAt
-          submittedAt
-        }
-      }
-    }
-  `;
-
-  const data = await client.request<{ cleanup: Cleanup | null }>(query, {
-    id: id.toLowerCase(),
-  });
-  return data.cleanup;
+  const response = await client.request<{ cleanup: SDKCleanup | null }>(
+    GET_CLEANUP_QUERY,
+    {
+      id,
+    } as GetCleanupParams
+  );
+  return response.cleanup ? transformCleanup(response.cleanup) : null;
 };
 
 // Users Queries
@@ -261,80 +225,43 @@ export const getUsers = async (
   filters: UserFilters = {},
   pagination: PaginationParams = { first: 20, skip: 0 }
 ): Promise<User[]> => {
-  const conditions: string[] = [];
+  const variables: GetUsersParams = {
+    first: pagination.first,
+    skip: pagination.skip,
+    orderBy: (pagination.orderBy as User_orderBy) || "registeredAt",
+    orderDirection: (pagination.orderDirection as OrderDirection) || "desc",
+  };
 
+  const where: User_filter = {};
   if (filters.isOrganizer !== undefined) {
-    conditions.push(`isOrganizer: ${filters.isOrganizer}`);
+    where.isOrganizer = filters.isOrganizer;
   }
   if (filters.emailVerified !== undefined) {
-    conditions.push(`emailVerified: ${filters.emailVerified}`);
+    where.emailVerified = filters.emailVerified;
   }
   if (filters.kycStatus !== undefined) {
-    conditions.push(`kycStatus: ${filters.kycStatus}`);
+    where.kycStatus = filters.kycStatus;
   }
   if (filters.referrer) {
-    conditions.push(`referrer: "${filters.referrer.toLowerCase()}"`);
+    where.referrer = normalizeAddress(filters.referrer);
+  }
+  if (Object.keys(where).length > 0) {
+    variables.where = where;
   }
 
-  const whereClause =
-    conditions.length > 0 ? `where: { ${conditions.join(", ")} }` : "";
-
-  const query = `
-    query GetUsers {
-      users(
-        ${whereClause}
-        first: ${pagination.first}
-        skip: ${pagination.skip}
-        orderBy: ${pagination.orderBy || "registeredAt"}
-        orderDirection: ${pagination.orderDirection || "desc"}
-      ) {
-        id
-        metadata
-        email
-        emailVerified
-        kycStatus
-        referralCode
-        referrer
-        isOrganizer
-        registeredAt
-        emailVerifiedAt
-        lastProfileUpdateAt
-        totalRewardsEarned
-        totalRewardsClaimed
-        pendingRewards
-      }
-    }
-  `;
-
-  const data = await client.request<{ users: User[] }>(query);
-  return data.users;
+  const response = await client.request<{ users: SDKUser[] }>(
+    GET_USERS_QUERY,
+    variables
+  );
+  return response.users.map(transformUser);
 };
 
 export const getUser = async (id: string): Promise<User | null> => {
-  const query = `
-    query GetUser($id: Bytes!) {
-      user(id: $id) {
-        id
-        metadata
-        email
-        emailVerified
-        kycStatus
-        referralCode
-        referrer
-        isOrganizer
-        registeredAt
-        emailVerifiedAt
-        lastProfileUpdateAt
-        totalRewardsEarned
-        totalRewardsClaimed
-        pendingRewards
-      }
-    }
-  `;
-
-  const data = await client.request<{ user: User | null }>(query, {
-    id: id.toLowerCase(),
-  });
-  return data.user;
+  const response = await client.request<{ user: SDKUser | null }>(
+    GET_USER_QUERY,
+    {
+      id: normalizeAddress(id),
+    } as GetUserParams
+  );
+  return response.user ? transformUser(response.user) : null;
 };
-

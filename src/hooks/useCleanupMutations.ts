@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWallet, useSendTransaction } from "@vechain/vechain-kit";
-import { CleanupABI } from "../contracts/abis/Cleanup";
+import { CleanupABI } from "@cleanmate/cip-sdk";
 import { createClause } from "../helpers/contracts";
 import { CONTRACT_ADDRESSES } from "../config/constants";
 
@@ -92,12 +92,9 @@ export const usePublishCleanup = () => {
           ? BigInt(params.cleanupId)
           : BigInt(params.cleanupId);
 
-      const clause = createClause(
-        CleanupABI,
-        cleanupId,
-        "publishCleanup",
-        [cleanupIdParam]
-      );
+      const clause = createClause(CleanupABI, cleanupId, "publishCleanup", [
+        cleanupIdParam,
+      ]);
 
       return sendTransaction([clause]);
     },
@@ -142,12 +139,9 @@ export const useUnpublishCleanup = () => {
           ? BigInt(params.cleanupId)
           : BigInt(params.cleanupId);
 
-      const clause = createClause(
-        CleanupABI,
-        cleanupId,
-        "unpublishCleanup",
-        [cleanupIdParam]
-      );
+      const clause = createClause(CleanupABI, cleanupId, "unpublishCleanup", [
+        cleanupIdParam,
+      ]);
 
       return sendTransaction([clause]);
     },

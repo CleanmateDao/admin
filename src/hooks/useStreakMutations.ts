@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWallet, useSendTransaction } from "@vechain/vechain-kit";
 import { CONTRACT_ADDRESSES } from "../config/constants";
-import { StreakABI } from "../contracts/abis/Streak";
+import { StreakABI } from "@cleanmate/cip-sdk";
 import { createClause } from "../helpers/contracts";
 
 interface ApproveStreaksParams {
@@ -17,11 +17,7 @@ interface RejectStreaksParams {
 export const useApproveStreaks = () => {
   const queryClient = useQueryClient();
   const { account } = useWallet();
-  const {
-    sendTransaction,
-    isTransactionPending,
-    error,
-  } = useSendTransaction({
+  const { sendTransaction, isTransactionPending, error } = useSendTransaction({
     signerAccountAddress: account?.address ?? null,
     onTxConfirmed: () => {
       queryClient.invalidateQueries({ queryKey: ["streakSubmissions"] });
@@ -62,11 +58,7 @@ export const useApproveStreaks = () => {
 export const useRejectStreaks = () => {
   const queryClient = useQueryClient();
   const { account } = useWallet();
-  const {
-    sendTransaction,
-    isTransactionPending,
-    error,
-  } = useSendTransaction({
+  const { sendTransaction, isTransactionPending, error } = useSendTransaction({
     signerAccountAddress: account?.address ?? null,
     onTxConfirmed: () => {
       queryClient.invalidateQueries({ queryKey: ["streakSubmissions"] });
@@ -103,4 +95,3 @@ export const useRejectStreaks = () => {
     hash: reject.data,
   };
 };
-

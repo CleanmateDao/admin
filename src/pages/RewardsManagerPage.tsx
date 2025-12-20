@@ -16,11 +16,21 @@ import { useCleanups } from "../hooks/useCleanups";
 import { useCleanup } from "../hooks/useCleanups";
 import { getUser } from "../services/subgraph";
 import { formatAddress } from "../helpers/format";
+import { parseUserProfileMetadata } from "@cleanmate/cip-sdk";
 import type { StreakSubmission } from "../types";
 
 // Helper function to extract name from user metadata
 const getUserName = (metadata: string | null): string | undefined => {
   if (!metadata) return undefined;
+  try {
+    // Try to parse using CIP metadata utilities first
+    const parsedCIP = parseUserProfileMetadata<string>(metadata);
+    if (parsedCIP?.name) {
+      return parsedCIP.name;
+    }
+  } catch {
+    // CIP metadata not available, fall through to manual parsing
+  }
   try {
     const parsed = JSON.parse(metadata);
     return parsed.name || parsed.fullName || parsed.displayName || undefined;
@@ -103,7 +113,11 @@ export default function RewardsManagerPage() {
 
     // Validate cleanup ID format (should be a valid number)
     const cleanupIdNum = Number(cleanupId);
-    if (isNaN(cleanupIdNum) || cleanupIdNum <= 0 || !Number.isInteger(cleanupIdNum)) {
+    if (
+      isNaN(cleanupIdNum) ||
+      cleanupIdNum <= 0 ||
+      !Number.isInteger(cleanupIdNum)
+    ) {
       setCleanupError(
         "Invalid cleanup ID format. Please enter a valid positive integer."
       );

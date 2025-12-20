@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWallet, useSendTransaction } from "@vechain/vechain-kit";
-import { RewardsManagerABI } from "../contracts/abis/RewardsManager";
+import { RewardsManagerABI } from "@cleanmate/cip-sdk";
 import { CONTRACT_ADDRESSES } from "../config/constants";
 import { createClause } from "../helpers/contracts";
 import { parseUnits } from "viem";

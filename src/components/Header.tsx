@@ -1,13 +1,17 @@
 import { Link, useLocation } from "react-router-dom";
 import { WalletButton } from "./WalletButton";
 import { ThemeToggle } from "./ThemeToggle";
+import logo from "/logo.png";
 
 export default function Header() {
   const location = useLocation();
 
   return (
     <nav className="bg-card border-b border-border px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-      <div className="text-xl font-semibold text-foreground">Admin Dashboard</div>
+      <Link to="/" className="flex items-center gap-3">
+        <img src={logo} alt="CleanMate" className="h-8 w-auto" />
+        <span className="text-xl font-semibold text-foreground">Admin Dashboard</span>
+      </Link>
       <div className="flex items-center gap-4">
         <div className="hidden md:flex items-center gap-2">
           <Link
