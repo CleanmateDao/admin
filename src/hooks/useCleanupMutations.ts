@@ -2,14 +2,15 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWallet, useSendTransaction } from "@vechain/vechain-kit";
 import { CleanupABI } from "../contracts/abis/Cleanup";
 import { createClause } from "../helpers/contracts";
+import { CONTRACT_ADDRESSES } from "../config/constants";
 
 interface UpdateStatusParams {
-  cleanupAddress: string;
+  cleanupId: string | number;
   status: number;
 }
 
 interface PublishParams {
-  cleanupAddress: string;
+  cleanupId: string | number;
 }
 
 export const useUpdateCleanupStatus = () => {
@@ -29,11 +30,23 @@ export const useUpdateCleanupStatus = () => {
         throw new Error("Wallet not connected");
       }
 
+      const cleanupAddress = (
+        CONTRACT_ADDRESSES as typeof CONTRACT_ADDRESSES & { CLEANUP?: string }
+      ).CLEANUP;
+      if (!cleanupAddress) {
+        throw new Error("Cleanup contract address not configured");
+      }
+
+      const cleanupId =
+        typeof params.cleanupId === "string"
+          ? BigInt(params.cleanupId)
+          : BigInt(params.cleanupId);
+
       const clause = createClause(
         CleanupABI,
-        params.cleanupAddress,
+        cleanupAddress,
         "updateCleanupStatus",
-        [params.status]
+        [cleanupId, params.status]
       );
 
       return sendTransaction([clause]);
@@ -67,11 +80,23 @@ export const usePublishCleanup = () => {
         throw new Error("Wallet not connected");
       }
 
+      const cleanupAddress = (
+        CONTRACT_ADDRESSES as typeof CONTRACT_ADDRESSES & { CLEANUP?: string }
+      ).CLEANUP;
+      if (!cleanupAddress) {
+        throw new Error("Cleanup contract address not configured");
+      }
+
+      const cleanupId =
+        typeof params.cleanupId === "string"
+          ? BigInt(params.cleanupId)
+          : BigInt(params.cleanupId);
+
       const clause = createClause(
         CleanupABI,
-        params.cleanupAddress,
+        cleanupAddress,
         "publishCleanup",
-        []
+        [cleanupId]
       );
 
       return sendTransaction([clause]);
@@ -105,11 +130,23 @@ export const useUnpublishCleanup = () => {
         throw new Error("Wallet not connected");
       }
 
+      const cleanupAddress = (
+        CONTRACT_ADDRESSES as typeof CONTRACT_ADDRESSES & { CLEANUP?: string }
+      ).CLEANUP;
+      if (!cleanupAddress) {
+        throw new Error("Cleanup contract address not configured");
+      }
+
+      const cleanupId =
+        typeof params.cleanupId === "string"
+          ? BigInt(params.cleanupId)
+          : BigInt(params.cleanupId);
+
       const clause = createClause(
         CleanupABI,
-        params.cleanupAddress,
+        cleanupAddress,
         "unpublishCleanup",
-        []
+        [cleanupId]
       );
 
       return sendTransaction([clause]);

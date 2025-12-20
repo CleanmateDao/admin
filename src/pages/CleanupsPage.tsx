@@ -79,7 +79,7 @@ export default function CleanupsPage() {
   const columns = [
     {
       header: "ID",
-      accessor: (row: Cleanup) => formatAddress(row.id),
+      accessor: (row: Cleanup) => row.id,
     },
     {
       header: "Organizer",

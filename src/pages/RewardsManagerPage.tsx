@@ -101,10 +101,11 @@ export default function RewardsManagerPage() {
       return;
     }
 
-    // Validate cleanup ID format (should be a valid address)
-    if (!/^0x[a-fA-F0-9]{40}$/.test(cleanupId)) {
+    // Validate cleanup ID format (should be a valid number)
+    const cleanupIdNum = Number(cleanupId);
+    if (isNaN(cleanupIdNum) || cleanupIdNum <= 0 || !Number.isInteger(cleanupIdNum)) {
       setCleanupError(
-        "Invalid cleanup ID format. Please enter a valid address."
+        "Invalid cleanup ID format. Please enter a valid positive integer."
       );
       return;
     }
@@ -327,7 +328,7 @@ export default function RewardsManagerPage() {
     }
 
     const params: DistributeRewardsParams = {
-      cleanup: selectedCleanup,
+      cleanupId: Number(selectedCleanup),
       participants: validParticipants.map((p) => p.address),
       amounts: validParticipants.map((p) => p.amount),
     };
@@ -583,13 +584,13 @@ export default function RewardsManagerPage() {
                   </label>
                   <div className="flex gap-2 max-w-md mx-auto">
                     <Input
-                      type="text"
+                      type="number"
                       value={cleanupIdInput}
                       onChange={(e) => {
                         setCleanupIdInput(e.target.value);
                         setCleanupError("");
                       }}
-                      placeholder="0x..."
+                      placeholder="Enter cleanup ID (number)"
                       className="font-mono flex-1"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
@@ -616,7 +617,7 @@ export default function RewardsManagerPage() {
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-foreground mb-1">
-                        Cleanup: {formatAddress(selectedCleanup)}
+                        Cleanup ID: {selectedCleanup}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         Status:{" "}
@@ -931,8 +932,8 @@ export default function RewardsManagerPage() {
       >
         <div className="space-y-4">
           <p className="text-muted-foreground">
-            Are you sure you want to distribute rewards for cleanup{" "}
-            {selectedCleanup ? formatAddress(selectedCleanup) : ""}?
+            Are you sure you want to distribute rewards for cleanup ID{" "}
+            {selectedCleanup ? selectedCleanup : ""}?
           </p>
           <div className="max-h-64 overflow-y-auto space-y-2">
             {participantRewards

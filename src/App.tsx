@@ -42,7 +42,7 @@ function App() {
             b3trTransfers: { minAmountInEther: 1 },
           }}
           dappKit={{
-            allowedWallets: ["wallet-connect"],
+            allowedWallets: ["veworld", "sync2", "wallet-connect"],
             walletConnectOptions: {
               projectId: import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID,
               metadata: {

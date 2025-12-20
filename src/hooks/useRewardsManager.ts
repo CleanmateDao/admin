@@ -12,7 +12,7 @@ export interface SendRewardsParams {
 }
 
 export interface DistributeRewardsParams {
-  cleanup: string;
+  cleanupId: number; // uint256 cleanup ID
   participants: string[];
   amounts: string[]; // In B3TR (will be converted to wei)
 }
@@ -110,7 +110,7 @@ export function useDistributeRewards() {
         "distributeRewards",
         [
           {
-            cleanup: params.cleanup,
+            cleanupId: BigInt(params.cleanupId),
             participants: params.participants,
             amounts: amountsWei,
           },
@@ -157,9 +157,7 @@ export function useDistributeStreaksReward() {
       const submissionIdsBigInt = params.submissionIds.map((id) => BigInt(id));
 
       // Convert amounts from B3TR to wei (parseUnits returns bigint)
-      const amountsWei = params.amounts.map((amount) =>
-        parseUnits(amount, 18)
-      );
+      const amountsWei = params.amounts.map((amount) => parseUnits(amount, 18));
 
       const clause = createClause(
         RewardsManagerABI,
@@ -204,4 +202,3 @@ export function useUserRewards(userAddress: string | null) {
     enabled: !!userAddress && !!account,
   });
 }
-

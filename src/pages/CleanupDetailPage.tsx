@@ -44,20 +44,20 @@ export default function CleanupDetailPage() {
 
   const handleUpdateStatus = () => {
     updateStatus({
-      cleanupAddress: cleanup.id,
+      cleanupId: cleanup.id,
       status: Number(newStatus),
     });
   };
 
   const handlePublish = () => {
     publish({
-      cleanupAddress: cleanup.id,
+      cleanupId: cleanup.id,
     });
   };
 
   const handleUnpublish = () => {
     unpublish({
-      cleanupAddress: cleanup.id,
+      cleanupId: cleanup.id,
     });
   };
 
