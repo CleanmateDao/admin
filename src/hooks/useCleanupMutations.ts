@@ -30,23 +30,23 @@ export const useUpdateCleanupStatus = () => {
         throw new Error("Wallet not connected");
       }
 
-      const cleanupAddress = (
+      const cleanupId = (
         CONTRACT_ADDRESSES as typeof CONTRACT_ADDRESSES & { CLEANUP?: string }
       ).CLEANUP;
-      if (!cleanupAddress) {
+      if (!cleanupId) {
         throw new Error("Cleanup contract address not configured");
       }
 
-      const cleanupId =
+      const cleanupIdParam =
         typeof params.cleanupId === "string"
           ? BigInt(params.cleanupId)
           : BigInt(params.cleanupId);
 
       const clause = createClause(
         CleanupABI,
-        cleanupAddress,
+        cleanupId,
         "updateCleanupStatus",
-        [cleanupId, params.status]
+        [cleanupIdParam, params.status]
       );
 
       return sendTransaction([clause]);
@@ -80,23 +80,23 @@ export const usePublishCleanup = () => {
         throw new Error("Wallet not connected");
       }
 
-      const cleanupAddress = (
+      const cleanupId = (
         CONTRACT_ADDRESSES as typeof CONTRACT_ADDRESSES & { CLEANUP?: string }
       ).CLEANUP;
-      if (!cleanupAddress) {
+      if (!cleanupId) {
         throw new Error("Cleanup contract address not configured");
       }
 
-      const cleanupId =
+      const cleanupIdParam =
         typeof params.cleanupId === "string"
           ? BigInt(params.cleanupId)
           : BigInt(params.cleanupId);
 
       const clause = createClause(
         CleanupABI,
-        cleanupAddress,
+        cleanupId,
         "publishCleanup",
-        [cleanupId]
+        [cleanupIdParam]
       );
 
       return sendTransaction([clause]);
@@ -130,23 +130,23 @@ export const useUnpublishCleanup = () => {
         throw new Error("Wallet not connected");
       }
 
-      const cleanupAddress = (
+      const cleanupId = (
         CONTRACT_ADDRESSES as typeof CONTRACT_ADDRESSES & { CLEANUP?: string }
       ).CLEANUP;
-      if (!cleanupAddress) {
+      if (!cleanupId) {
         throw new Error("Cleanup contract address not configured");
       }
 
-      const cleanupId =
+      const cleanupIdParam =
         typeof params.cleanupId === "string"
           ? BigInt(params.cleanupId)
           : BigInt(params.cleanupId);
 
       const clause = createClause(
         CleanupABI,
-        cleanupAddress,
+        cleanupId,
         "unpublishCleanup",
-        [cleanupId]
+        [cleanupIdParam]
       );
 
       return sendTransaction([clause]);
