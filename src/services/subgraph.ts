@@ -4,23 +4,28 @@ import {
   GET_USERS_QUERY,
   GET_CLEANUP_QUERY,
   GET_CLEANUPS_QUERY,
+  GET_CLEANUP_UPDATES_QUERY,
   GET_STREAK_SUBMISSION_QUERY,
   GET_STREAK_SUBMISSIONS_QUERY,
   type GetUserParams,
   type GetUsersParams,
   type GetCleanupParams,
   type GetCleanupsParams,
+  type GetCleanupUpdatesParams,
   type GetStreakSubmissionParams,
   type GetStreakSubmissionsParams,
   type User as SDKUser,
   type Cleanup as SDKCleanup,
+  type CleanupUpdate as SDKCleanupUpdate,
   type StreakSubmission as SDKStreakSubmission,
   type CleanupParticipant as SDKCleanupParticipant,
   type User_filter,
   type Cleanup_filter,
+  type CleanupUpdate_filter,
   type StreakSubmission_filter,
   type User_orderBy,
   type Cleanup_orderBy,
+  type CleanupUpdate_orderBy,
   type StreakSubmission_orderBy,
   type OrderDirection,
 } from "@cleanmate/cip-sdk";
@@ -218,6 +223,37 @@ export const getCleanup = async (id: string): Promise<Cleanup | null> => {
     } as GetCleanupParams
   );
   return response.cleanup ? transformCleanup(response.cleanup) : null;
+};
+
+// Transform SDK CleanupUpdate to Admin CleanupUpdate
+function transformCleanupUpdate(update: SDKCleanupUpdate): CleanupUpdate {
+  return {
+    ...update,
+    addedAt: toString(update.addedAt) ?? "",
+    blockNumber: toString(update.blockNumber) ?? "",
+  };
+}
+
+export const getCleanupUpdates = async (
+  cleanupId: string,
+  pagination: PaginationParams = { first: 100, skip: 0 }
+): Promise<CleanupUpdate[]> => {
+  const variables: GetCleanupUpdatesParams = {
+    first: pagination.first,
+    skip: pagination.skip,
+    orderBy: (pagination.orderBy as CleanupUpdate_orderBy) || "addedAt",
+    orderDirection: (pagination.orderDirection as OrderDirection) || "desc",
+  };
+
+  const where: CleanupUpdate_filter = {
+    cleanup: cleanupId,
+  };
+  variables.where = where;
+
+  const response = await client.request<{
+    cleanupUpdates: SDKCleanupUpdate[];
+  }>(GET_CLEANUP_UPDATES_QUERY, variables);
+  return response.cleanupUpdates.map(transformCleanupUpdate);
 };
 
 // Users Queries
