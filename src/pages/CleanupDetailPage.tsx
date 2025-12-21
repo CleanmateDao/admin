@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useCleanup } from "../hooks/useCleanups";
+import { useCleanup, useCleanupUpdates } from "../hooks/useCleanups";
 import {
   useUpdateCleanupStatus,
   usePublishCleanup,
@@ -12,6 +12,7 @@ import {
   formatDate,
   getCleanupStatusLabel,
   parseCleanupMetadata,
+  parseCleanupUpdateMetadata,
 } from "../helpers/format";
 import { useState } from "react";
 import { formatEther } from "viem";
@@ -20,6 +21,9 @@ export default function CleanupDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: cleanup, isLoading } = useCleanup(id || null);
+  const { data: updates, isLoading: isLoadingUpdates } = useCleanupUpdates(
+    id || null
+  );
   const { updateStatus, isPending: isUpdatingStatus } =
     useUpdateCleanupStatus();
   const { publish, isPending: isPublishing } = usePublishCleanup();
@@ -312,11 +316,25 @@ export default function CleanupDetailPage() {
           </div>
         )}
 
-        {cleanup.proofOfWorkMedia.length > 0 && (
-          <div>
-            <label className="text-sm text-muted-foreground mb-2 block">
-              Proof of Work Media
-            </label>
+        {/* Proof of Work Section */}
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-foreground">
+              Proof of Work
+            </h2>
+            <div className="flex items-center gap-4">
+              {cleanup.proofOfWorkSubmittedAt && (
+                <span className="text-sm text-muted-foreground">
+                  Submitted: {formatDate(cleanup.proofOfWorkSubmittedAt)}
+                </span>
+              )}
+              <span className="text-sm text-muted-foreground">
+                {cleanup.proofOfWorkMedia.length} media
+                {cleanup.proofOfWorkMedia.length !== 1 ? " files" : " file"}
+              </span>
+            </div>
+          </div>
+          {cleanup.proofOfWorkMedia.length > 0 ? (
             <div className="grid grid-cols-3 gap-4">
               {cleanup.proofOfWorkMedia.map((media) => {
                 const isVideo = media.mimeType.startsWith("video/");
@@ -345,12 +363,119 @@ export default function CleanupDetailPage() {
                         }}
                       />
                     )}
+                    <p className="text-xs text-muted-foreground mt-2 truncate">
+                      {media.mimeType}
+                    </p>
                   </div>
                 );
               })}
             </div>
+          ) : (
+            <div className="bg-muted rounded p-8 border border-border text-center">
+              <p className="text-muted-foreground">
+                {cleanup.proofOfWorkSubmittedAt
+                  ? "No proof of work media available"
+                  : "Proof of work has not been submitted yet"}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Updates Section */}
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-foreground">Updates</h2>
+            <span className="text-sm text-muted-foreground">
+              {updates?.length || 0} update{updates?.length !== 1 ? "s" : ""}
+            </span>
           </div>
-        )}
+          {isLoadingUpdates ? (
+            <div className="text-center py-4 text-muted-foreground">
+              Loading updates...
+            </div>
+          ) : updates && updates.length > 0 ? (
+            <div className="space-y-4">
+              {updates.map((update) => {
+                const parsed = parseCleanupUpdateMetadata(update.metadata);
+                return (
+                  <div
+                    key={update.id}
+                    className="bg-muted rounded p-4 border border-border space-y-3"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          {formatAddress(update.organizer)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatDate(update.addedAt)}
+                        </p>
+                      </div>
+                      {update.transactionHash && (
+                        <a
+                          href={`https://explore-testnet.vechain.org/transactions/${update.transactionHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline"
+                        >
+                          View on Explorer
+                        </a>
+                      )}
+                    </div>
+                    {parsed?.description && (
+                      <div
+                        className="text-sm text-foreground prose prose-sm dark:prose-invert max-w-none"
+                        dangerouslySetInnerHTML={{
+                          __html: parsed.description,
+                        }}
+                      />
+                    )}
+                    {parsed?.media && parsed.media.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2">
+                        {parsed.media.map((item, index) => (
+                          <div
+                            key={index}
+                            className="bg-background rounded p-2 border border-border"
+                          >
+                            {item.type === "video" ? (
+                              <div className="w-full h-24 bg-secondary rounded flex items-center justify-center">
+                                <span className="text-xs text-muted-foreground">
+                                  Video
+                                </span>
+                              </div>
+                            ) : (
+                              <img
+                                src={item.ipfsHash}
+                                alt={item.name || "Media"}
+                                className="w-full h-24 object-cover rounded"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src =
+                                    "/placeholder.svg";
+                                }}
+                              />
+                            )}
+                            <p className="text-xs text-muted-foreground mt-1 truncate">
+                              {item.name || "Media"}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {!parsed && (
+                      <pre className="text-xs text-muted-foreground whitespace-pre-wrap overflow-auto max-h-40">
+                        {update.metadata || "No metadata"}
+                      </pre>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              No updates yet
+            </div>
+          )}
+        </div>
 
         <div>
           <div className="flex justify-between items-center mb-4">
@@ -377,7 +502,8 @@ export default function CleanupDetailPage() {
                   </p>
                   {participant.rewardEarned && (
                     <p className="text-sm text-status-approved">
-                      Reward: {formatEther(BigInt(participant.rewardEarned))} B3TR
+                      Reward: {formatEther(BigInt(participant.rewardEarned))}{" "}
+                      B3TR
                     </p>
                   )}
                 </div>

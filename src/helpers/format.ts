@@ -1,6 +1,7 @@
 import type { StreakSubmissionStatus } from "../types";
 import {
   parseCleanupMetadata as parseCleanupMetadataCIP,
+  parseCleanupUpdateMetadata as parseCleanupUpdateMetadataCIP,
   parseUserProfileMetadata,
 } from "@cleanmate/cip-sdk";
 
@@ -215,6 +216,43 @@ export const getUserLocation = (
       city: parts[0],
       country: parts[parts.length - 1],
     };
+  }
+
+  return null;
+};
+
+/**
+ * Parse cleanup update metadata from JSON string
+ */
+export const parseCleanupUpdateMetadata = (
+  metadata: string | null
+): {
+  description?: string;
+  media?: Array<{
+    ipfsHash: string;
+    type: string;
+    name: string;
+  }>;
+} | null => {
+  if (!metadata) return null;
+
+  try {
+    const parsedCIP = parseCleanupUpdateMetadataCIP(metadata);
+    if (parsedCIP) {
+      return parsedCIP;
+    }
+  } catch {
+    // CIP metadata not available, fall through to manual parsing
+  }
+
+  try {
+    const parsed = JSON.parse(metadata);
+    if (typeof parsed === "object" && parsed !== null) {
+      return parsed;
+    }
+  } catch {
+    // Not JSON, return null
+    return null;
   }
 
   return null;

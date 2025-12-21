@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { getCleanups, getCleanup } from "../services/subgraph";
+import { getCleanups, getCleanup, getCleanupUpdates } from "../services/subgraph";
 import type { CleanupFilters } from "../types";
 import { PAGE_SIZE } from "../config/constants";
 
@@ -27,6 +27,14 @@ export const useCleanup = (id: string | null, enabled = true) => {
     queryKey: ["cleanup", id],
     queryFn: () => (id ? getCleanup(id) : null),
     enabled: enabled && !!id,
+  });
+};
+
+export const useCleanupUpdates = (cleanupId: string | null, enabled = true) => {
+  return useQuery({
+    queryKey: ["cleanupUpdates", cleanupId],
+    queryFn: () => (cleanupId ? getCleanupUpdates(cleanupId) : []),
+    enabled: enabled && !!cleanupId,
   });
 };
 

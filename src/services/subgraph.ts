@@ -37,6 +37,7 @@ import type {
   PaginationParams,
   User,
   Cleanup,
+  CleanupUpdate,
   StreakSubmission,
   CleanupParticipant,
 } from "../types";
@@ -107,8 +108,7 @@ function transformCleanup(cleanup: SDKCleanup): Cleanup {
     proofOfWorkMedia: cleanup.proofOfWork
       ? cleanup.proofOfWork.ipfsHashes.map((hash, index) => ({
           id: `${cleanup.id}-pow-${index}`,
-          cleanup: {} as Cleanup,
-          url: `https://ipfs.io/ipfs/${hash}`,
+          url: hash,
           mimeType: cleanup.proofOfWork!.mimetypes[index] || "image/jpeg",
           uploadedAt: toString(cleanup.proofOfWorkSubmittedAt) ?? "",
           submittedAt: toString(cleanup.proofOfWork!.submittedAt) ?? "",

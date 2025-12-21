@@ -3,6 +3,7 @@ export type {
   User,
   Cleanup as SDKCleanup,
   CleanupParticipant as SDKCleanupParticipant,
+  CleanupUpdate as SDKCleanupUpdate,
   StreakSubmission as SDKStreakSubmission,
   UserStreakStats,
 } from "@cleanmate/cip-sdk";
@@ -28,7 +29,6 @@ export interface CleanupMedia {
 
 export interface ProofOfWorkMedia {
   id: string;
-  cleanup: Cleanup;
   url: string;
   mimeType: string;
   uploadedAt: string;
@@ -67,6 +67,14 @@ export interface CleanupParticipant
   acceptedAt: string | null;
   rejectedAt: string | null;
   rewardEarnedAt: string | null;
+}
+
+// Extended CleanupUpdate type
+import type { CleanupUpdate as SDKCleanupUpdateType } from "@cleanmate/cip-sdk";
+export interface CleanupUpdate
+  extends Omit<SDKCleanupUpdateType, "addedAt" | "blockNumber"> {
+  addedAt: string;
+  blockNumber: string;
 }
 
 // Extended StreakSubmission type
