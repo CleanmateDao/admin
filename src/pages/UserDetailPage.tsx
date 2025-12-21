@@ -10,6 +10,7 @@ import {
   getUserName,
   getUserLocation,
 } from "../helpers/format";
+import { formatEther } from "viem";
 
 export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -164,13 +165,13 @@ export default function UserDetailPage() {
                 Total Claimed
               </label>
               <p className="text-foreground text-lg font-semibold">
-                {user.totalRewardsClaimed} B3TR
+                {formatEther(BigInt(user.totalRewardsClaimed))} B3TR
               </p>
             </div>
             <div>
               <label className="text-sm text-muted-foreground">Pending</label>
               <p className="text-status-approved text-lg font-semibold">
-                {user.pendingRewards} B3TR
+                {formatEther(BigInt(user.pendingRewards))} B3TR
               </p>
             </div>
           </div>

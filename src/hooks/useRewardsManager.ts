@@ -3,7 +3,7 @@ import { useWallet, useSendTransaction } from "@vechain/vechain-kit";
 import { RewardsManagerABI } from "@cleanmate/cip-sdk";
 import { CONTRACT_ADDRESSES } from "../config/constants";
 import { createClause } from "../helpers/contracts";
-import { parseUnits } from "viem";
+import { parseEther } from "viem";
 
 export interface SendRewardsParams {
   recipients: string[];
@@ -48,8 +48,8 @@ export function useSendRewards() {
         throw new Error("Rewards Manager address not configured");
       }
 
-      // Convert amounts from B3TR to wei (parseUnits returns bigint)
-      const amountsWei = params.amounts.map((amount) => parseUnits(amount, 18));
+      // Convert amounts from B3TR to wei (parseEther returns bigint)
+      const amountsWei = params.amounts.map((amount) => parseEther(amount));
 
       const clause = createClause(
         RewardsManagerABI,
@@ -101,8 +101,8 @@ export function useDistributeRewards() {
         throw new Error("Rewards Manager address not configured");
       }
 
-      // Convert amounts from B3TR to wei (parseUnits returns bigint)
-      const amountsWei = params.amounts.map((amount) => parseUnits(amount, 18));
+      // Convert amounts from B3TR to wei (parseEther returns bigint)
+      const amountsWei = params.amounts.map((amount) => parseEther(amount));
 
       const clause = createClause(
         RewardsManagerABI,
@@ -156,8 +156,8 @@ export function useDistributeStreaksReward() {
       // Convert submission IDs to BigInt
       const submissionIdsBigInt = params.submissionIds.map((id) => BigInt(id));
 
-      // Convert amounts from B3TR to wei (parseUnits returns bigint)
-      const amountsWei = params.amounts.map((amount) => parseUnits(amount, 18));
+      // Convert amounts from B3TR to wei (parseEther returns bigint)
+      const amountsWei = params.amounts.map((amount) => parseEther(amount));
 
       const clause = createClause(
         RewardsManagerABI,

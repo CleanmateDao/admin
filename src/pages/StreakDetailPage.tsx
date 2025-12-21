@@ -9,7 +9,9 @@ import { Dialog } from "../components/ui/Dialog";
 import { Input } from "../components/ui/Input";
 import { formatDate, getStatusLabel, getStatusColor } from "../helpers/format";
 import { useState } from "react";
-import { parseUnits } from "viem";
+import { parseEther, formatEther } from "viem";
+import { parseStreakSubmissionMetadata } from "@cleanmate/cip-sdk";
+import { useStreakCart } from "../contexts/StreakCartContext";
 
 export default function StreakDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -17,10 +19,16 @@ export default function StreakDetailPage() {
   const { data: submission, isLoading } = useStreakSubmission(id || null);
   const { approve, isPending: isApproving } = useApproveStreaks();
   const { reject, isPending: isRejecting } = useRejectStreaks();
+  const { addToCart, isInCart } = useStreakCart();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogType, setDialogType] = useState<"approve" | "reject">("approve");
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
+
+  // Parse metadata
+  const parsedMetadata = submission
+    ? parseStreakSubmissionMetadata(submission.metadata)
+    : null;
 
   if (isLoading) {
     return (
@@ -44,7 +52,7 @@ export default function StreakDetailPage() {
     if (!amount) return;
 
     const submissionId = BigInt(submission.submissionId);
-    const amountWei = parseUnits(amount, 18);
+    const amountWei = parseEther(amount);
 
     approve({
       submissionIds: [submissionId],
@@ -89,28 +97,41 @@ export default function StreakDetailPage() {
               </span>
             </div>
           </div>
-          {submission.status === 0 && (
-            <div className="flex gap-2">
+          <div className="flex gap-2">
+            {submission.status === 0 && (
+              <>
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    setDialogType("approve");
+                    setDialogOpen(true);
+                  }}
+                >
+                  Approve
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={() => {
+                    setDialogType("reject");
+                    setDialogOpen(true);
+                  }}
+                >
+                  Reject
+                </Button>
+              </>
+            )}
+            {submission.status === 1 && (
               <Button
                 variant="primary"
-                onClick={() => {
-                  setDialogType("approve");
-                  setDialogOpen(true);
-                }}
+                onClick={() => addToCart(submission)}
+                disabled={isInCart(submission.submissionId)}
               >
-                Approve
+                {isInCart(submission.submissionId)
+                  ? "Already in Cart"
+                  : "Add to Cart"}
               </Button>
-              <Button
-                variant="danger"
-                onClick={() => {
-                  setDialogType("reject");
-                  setDialogOpen(true);
-                }}
-              >
-                Reject
-              </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -143,7 +164,9 @@ export default function StreakDetailPage() {
               <label className="text-sm text-muted-foreground">
                 Reward Amount
               </label>
-              <p className="text-foreground">{submission.rewardAmount} B3TR</p>
+              <p className="text-foreground">
+                {formatEther(BigInt(submission.rewardAmount))} B3TR
+              </p>
             </div>
           )}
           {submission.rejectionReason && (
@@ -160,11 +183,87 @@ export default function StreakDetailPage() {
           <label className="text-sm text-muted-foreground mb-2 block">
             Metadata
           </label>
-          <div className="bg-muted rounded p-4 border border-border">
-            <pre className="text-sm text-foreground whitespace-pre-wrap">
-              {submission.metadata}
-            </pre>
-          </div>
+          {parsedMetadata ? (
+            <div className="bg-muted rounded p-4 border border-border space-y-3">
+              <div>
+                <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                  Description
+                </span>
+                <p className="text-sm text-foreground mt-1">
+                  {parsedMetadata.description}
+                </p>
+              </div>
+              {parsedMetadata.timestamp && (
+                <div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                    Timestamp
+                  </span>
+                  <p className="text-sm text-foreground mt-1">
+                    {new Date(parsedMetadata.timestamp).toLocaleString()}
+                  </p>
+                </div>
+              )}
+              {parsedMetadata.streakerCode && (
+                <div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                    Streaker Code
+                  </span>
+                  <p className="text-sm text-foreground font-mono mt-1">
+                    {parsedMetadata.streakerCode}
+                  </p>
+                </div>
+              )}
+              {parsedMetadata.mediaCount !== undefined && (
+                <div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                    Media Count
+                  </span>
+                  <p className="text-sm text-foreground mt-1">
+                    {parsedMetadata.mediaCount}
+                  </p>
+                </div>
+              )}
+              {parsedMetadata.totalMediaLength && (
+                <div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                    Total Media Length
+                  </span>
+                  <p className="text-sm text-foreground mt-1">
+                    {parsedMetadata.totalMediaLength}s
+                  </p>
+                </div>
+              )}
+              {parsedMetadata.totalSize && (
+                <div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                    Total Size
+                  </span>
+                  <p className="text-sm text-foreground mt-1">
+                    {(parsedMetadata.totalSize / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                </div>
+              )}
+              {parsedMetadata.deviceType && (
+                <div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                    Device Type
+                  </span>
+                  <p className="text-sm text-foreground mt-1">
+                    {parsedMetadata.deviceType}
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-muted rounded p-4 border border-border">
+              <pre className="text-sm text-foreground whitespace-pre-wrap">
+                {submission.metadata}
+              </pre>
+              <p className="text-xs text-muted-foreground mt-2">
+                Could not parse metadata as valid CIP format
+              </p>
+            </div>
+          )}
         </div>
 
         {submission.media.length > 0 && (

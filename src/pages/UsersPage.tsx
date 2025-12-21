@@ -11,6 +11,7 @@ import {
   getUserName,
 } from "../helpers/format";
 import type { User } from "../types";
+import { formatEther } from "viem";
 
 export default function UsersPage() {
   const navigate = useNavigate();
@@ -94,11 +95,13 @@ export default function UsersPage() {
     },
     {
       header: "Total Rewards",
-      accessor: (row: User) => `${row.totalRewardsEarned} B3TR`,
+      accessor: (row: User) =>
+        `${formatEther(BigInt(row.totalRewardsEarned))} B3TR`,
     },
     {
       header: "Pending Rewards",
-      accessor: (row: User) => `${row.pendingRewards} B3TR`,
+      accessor: (row: User) =>
+        `${formatEther(BigInt(row.pendingRewards))} B3TR`,
     },
   ];
 

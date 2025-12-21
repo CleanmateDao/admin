@@ -4,6 +4,7 @@ import {
   TransactionModalProvider,
 } from "@vechain/vechain-kit";
 import { ThemeProvider } from "./components/ThemeProvider";
+import { StreakCartProvider } from "./contexts/StreakCartContext";
 import Layout from "./components/Layout";
 import StreaksPage from "./pages/StreaksPage";
 import StreakDetailPage from "./pages/StreakDetailPage";
@@ -35,7 +36,8 @@ function App() {
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
-        <VeChainKitProvider
+        <StreakCartProvider>
+          <VeChainKitProvider
           feeDelegation={{
             delegatorUrl: import.meta.env.VITE_DELEGATOR_URL!,
             delegateAllTransactions: true,
@@ -125,6 +127,7 @@ function App() {
             </BrowserRouter>
           </TransactionModalProvider>
         </VeChainKitProvider>
+        </StreakCartProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );

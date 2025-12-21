@@ -18,6 +18,8 @@ import { getUser } from "../services/subgraph";
 import { formatAddress } from "../helpers/format";
 import { parseUserProfileMetadata } from "@cleanmate/cip-sdk";
 import type { StreakSubmission } from "../types";
+import { useStreakCart } from "../contexts/StreakCartContext";
+import { formatEther } from "viem";
 
 // Helper function to extract name from user metadata
 const getUserName = (metadata: string | null): string | undefined => {
@@ -59,16 +61,7 @@ interface StreakSubmissionReward {
   amount: string;
 }
 
-interface StreakCartItem {
-  submissionId: string;
-  amount: string;
-  metadata?: string;
-  user?: string;
-  submittedAt?: string;
-}
-
 export default function RewardsManagerPage() {
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>("send");
   const [showSendDialog, setShowSendDialog] = useState(false);
   const [showDistributeDialog, setShowDistributeDialog] = useState(false);
@@ -88,7 +81,13 @@ export default function RewardsManagerPage() {
   const [cleanupError, setCleanupError] = useState<string>("");
 
   // Distribute streak rewards state - using cart approach
-  const [streakCart, setStreakCart] = useState<StreakCartItem[]>([]);
+  const {
+    cart: streakCart,
+    addToCart: handleAddToStreakCart,
+    removeFromCart: handleRemoveFromStreakCart,
+    clearCart: handleClearStreakCart,
+    updateCartItemAmount: handleUpdateCartItemAmount,
+  } = useStreakCart();
 
   const { sendRewards, isPending: isSending } = useSendRewards();
   const { distributeRewards, isPending: isDistributing } =
@@ -212,7 +211,7 @@ export default function RewardsManagerPage() {
         setParticipantRewards(
           accepted.map((p) => ({
             address: p.participant,
-            amount: p.rewardEarned || "0",
+            amount: p.rewardEarned ? formatEther(BigInt(p.rewardEarned)) : "0",
             approvedAmount: p.rewardEarned || "0",
             userName: undefined, // Will be loaded separately
           }))
@@ -368,43 +367,6 @@ export default function RewardsManagerPage() {
     setCleanupError("");
   };
 
-  const handleAddToStreakCart = (streak: StreakSubmission) => {
-    // Check if already in cart
-    if (streakCart.some((item) => item.submissionId === streak.submissionId)) {
-      return;
-    }
-
-    const amount = streak.amount || streak.rewardAmount || "0";
-    setStreakCart([
-      ...streakCart,
-      {
-        submissionId: streak.submissionId,
-        amount: amount,
-        metadata: streak.metadata,
-        user: streak.user,
-        submittedAt: streak.submittedAt,
-      },
-    ]);
-  };
-
-  const handleRemoveFromStreakCart = (submissionId: string) => {
-    setStreakCart(
-      streakCart.filter((item) => item.submissionId !== submissionId)
-    );
-  };
-
-  const handleClearStreakCart = () => {
-    setStreakCart([]);
-  };
-
-  const handleUpdateCartItemAmount = (submissionId: string, amount: string) => {
-    setStreakCart(
-      streakCart.map((item) =>
-        item.submissionId === submissionId ? { ...item, amount } : item
-      )
-    );
-  };
-
   const handleDistributeStreaksReward = () => {
     if (streakCart.length === 0) {
       alert("Please add at least one streak submission to the cart");
@@ -428,7 +390,7 @@ export default function RewardsManagerPage() {
     distributeStreaksReward(params, {
       onSuccess: () => {
         setShowStreaksDialog(false);
-        setStreakCart([]);
+        handleClearStreakCart();
       },
       onError: (error) => {
         alert(`Error: ${error.message}`);
@@ -742,7 +704,11 @@ export default function RewardsManagerPage() {
                                 />
                                 {participant.approvedAmount && (
                                   <p className="text-xs text-muted-foreground mt-1">
-                                    Approved: {participant.approvedAmount} B3TR
+                                    Approved:{" "}
+                                    {formatEther(
+                                      BigInt(participant.approvedAmount)
+                                    )}{" "}
+                                    B3TR
                                   </p>
                                 )}
                               </td>

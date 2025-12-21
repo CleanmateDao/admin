@@ -14,6 +14,7 @@ import {
   parseCleanupMetadata,
 } from "../helpers/format";
 import { useState } from "react";
+import { formatEther } from "viem";
 
 export default function CleanupDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -376,7 +377,7 @@ export default function CleanupDetailPage() {
                   </p>
                   {participant.rewardEarned && (
                     <p className="text-sm text-status-approved">
-                      Reward: {participant.rewardEarned} B3TR
+                      Reward: {formatEther(BigInt(participant.rewardEarned))} B3TR
                     </p>
                   )}
                 </div>

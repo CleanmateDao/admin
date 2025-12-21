@@ -18,7 +18,8 @@ import {
   getStatusColor,
 } from "../helpers/format";
 import type { StreakSubmission, StreakSubmissionStatus } from "../types";
-import { parseUnits } from "viem";
+import { parseEther, formatEther } from "viem";
+import { StreakCard } from "../components/StreakCard";
 
 export default function StreaksPage() {
   const navigate = useNavigate();
@@ -103,7 +104,7 @@ export default function StreaksPage() {
     if (!selectedSubmission || !amount) return;
 
     const submissionId = BigInt(selectedSubmission.submissionId);
-    const amountWei = parseUnits(amount, 18);
+    const amountWei = parseEther(amount);
 
     approve({
       submissionIds: [submissionId],
@@ -154,7 +155,9 @@ export default function StreaksPage() {
     {
       header: "Amount",
       accessor: (row: StreakSubmission) =>
-        row.rewardAmount ? `${row.rewardAmount} B3TR` : "-",
+        row.rewardAmount
+          ? `${formatEther(BigInt(row.rewardAmount))} B3TR`
+          : "-",
     },
     {
       header: "Actions",
@@ -225,13 +228,46 @@ export default function StreaksPage() {
         </div>
       </div>
 
-      <div className="bg-card rounded-lg p-4 border border-border">
-        <InfiniteScrollTable
-          query={filteredQuery}
-          columns={columns}
-          onRowClick={handleRowClick}
-        />
-      </div>
+      {/* Show cards for approved streaks, table for others */}
+      {statusFilter === "1" && (
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-foreground mb-4">
+            Approved Streaks
+          </h2>
+          {filteredQuery.data ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredQuery.data.pages
+                .flat()
+                .filter((submission: StreakSubmission) => submission.status === 1)
+                .map((streak: StreakSubmission) => (
+                  <StreakCard key={streak.id} streak={streak} />
+                ))}
+              {filteredQuery.data.pages
+                .flat()
+                .filter((submission: StreakSubmission) => submission.status === 1)
+                .length === 0 && (
+                <div className="col-span-full text-center py-8 text-muted-foreground">
+                  No approved streaks found
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              Loading...
+            </div>
+          )}
+        </div>
+      )}
+
+      {statusFilter !== "1" && (
+        <div className="bg-card rounded-lg p-4 border border-border">
+          <InfiniteScrollTable
+            query={filteredQuery}
+            columns={columns}
+            onRowClick={handleRowClick}
+          />
+        </div>
+      )}
 
       <Dialog
         open={dialogOpen}
