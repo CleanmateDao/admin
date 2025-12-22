@@ -203,16 +203,6 @@ export default function StreakDetailPage() {
                   </p>
                 </div>
               )}
-              {parsedMetadata.streakerCode && (
-                <div>
-                  <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                    Streaker Code
-                  </span>
-                  <p className="text-sm text-foreground font-mono mt-1">
-                    {parsedMetadata.streakerCode}
-                  </p>
-                </div>
-              )}
               {parsedMetadata.mediaCount !== undefined && (
                 <div>
                   <span className="text-xs text-muted-foreground uppercase tracking-wide">

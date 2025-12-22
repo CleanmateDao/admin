@@ -23,12 +23,16 @@ export function Dialog({
         <DialogPrimitive.Overlay className="fixed inset-0 bg-black/50 z-40" />
         <DialogPrimitive.Content
           className={clsx(
-            "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-lg shadow-xl z-50 p-6 border",
+            "fixed rounded-lg shadow-xl z-50 p-6 border",
             "bg-card text-card-foreground",
+            // Mobile: full width
+            "w-full bottom-0 left-0 right-0 top-auto translate-y-0 translate-x-0 rounded-t-lg rounded-b-none",
+            // Desktop: centered with max-width
+            "sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:bottom-auto sm:right-auto sm:rounded-lg",
             {
-              "w-full max-w-sm": size === "sm",
-              "w-full max-w-md": size === "md",
-              "w-full max-w-2xl": size === "lg",
+              "sm:max-w-sm": size === "sm",
+              "sm:max-w-md": size === "md",
+              "sm:max-w-2xl": size === "lg",
             }
           )}
           style={{
