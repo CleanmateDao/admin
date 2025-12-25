@@ -38,11 +38,21 @@ export interface KycSubmission {
 export interface Transaction {
   id: string;
   userId: string;
-  amount: string;
-  currency: string;
+  walletAddress?: string;
+  bankAccountId?: string;
   status: string;
+  amountB3TR?: string;
+  convertedAmount?: number;
+  currency: string;
+  transactionHash?: string;
+  transferReference?: string;
+  bankName?: string;
+  accountNumber?: string;
+  errorMessage?: string;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
+  // Legacy field for backward compatibility
+  amount?: string;
 }
 
 export interface ExchangeRate {

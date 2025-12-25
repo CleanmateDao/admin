@@ -100,8 +100,8 @@ export default function KycPage() {
       accessorKey: "documentType",
       header: "Document Type",
       cell: (info: CellContext<KycSubmission, unknown>) => {
-        const docType = info.getValue() as string;
-        return docType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+        const cardType = info.getValue() as string;
+        return cardType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
       },
     },
     {

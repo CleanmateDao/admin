@@ -20,7 +20,7 @@ export function getBaseUrl(service: 'email' | 'kyc' | 'bank'): string {
   const defaults = {
     email: 'http://localhost:3000',
     kyc: 'http://localhost:3002',
-    bank: 'http://localhost:3003',
+    bank: 'http://localhost:3002',
   };
   return defaults[service];
 }

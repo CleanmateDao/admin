@@ -35,7 +35,7 @@ export function useBankTransactions(
       if (endDate) {
         params.append("endDate", endDate);
       }
-      const endpoint = `/admin/transactions?${params.toString()}`;
+      const endpoint = `/api/admin/transactions?${params.toString()}`;
       return apiClient.get<{ data: Transaction[]; pagination: unknown }>(
         endpoint
       );
@@ -60,7 +60,7 @@ export function useExchangeRates(activeTab?: string) {
           rateToB3TR: number;
           lastUpdated: string;
         }>;
-      }>("/exchange-rate");
+      }>("/api/admin/exchange-rates");
 
       // Map the response to match our ExchangeRate interface
       return response.data.map((rate) => ({
@@ -88,22 +88,13 @@ export function useBankMutations() {
       isEditing: boolean;
     }) => {
       if (!apiClient) throw new Error("Not authenticated");
-      if (isEditing) {
-        // Update existing rate
-        return apiClient.patch(`/exchange-rate/${data.currencyCode}`, {
-          currencyName: data.currencyName,
-          symbol: data.symbol,
-          rateToB3TR: parseFloat(data.rateToB3TR),
-        });
-      } else {
-        // Create new rate
-        return apiClient.post("/exchange-rate", {
-          currencyCode: data.currencyCode,
-          currencyName: data.currencyName,
-          symbol: data.symbol,
-          rateToB3TR: parseFloat(data.rateToB3TR),
-        });
-      }
+      // Use admin endpoint for consistency
+      return apiClient.post("/api/admin/exchange-rate", {
+        currencyCode: data.currencyCode,
+        currencyName: data.currencyName,
+        symbol: data.symbol,
+        rateToB3TR: parseFloat(data.rateToB3TR),
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["exchange-rates"] });
@@ -114,7 +105,7 @@ export function useBankMutations() {
   const deleteExchangeRateMutation = useMutation({
     mutationFn: async (currencyCode: string) => {
       if (!apiClient) throw new Error("Not authenticated");
-      return apiClient.delete(`/exchange-rate/${currencyCode}`);
+      return apiClient.delete(`/api/admin/exchange-rate/${currencyCode}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["exchange-rates"] });

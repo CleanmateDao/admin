@@ -65,43 +65,265 @@ export default function BankPage() {
 
   const transactions = transactionsData?.data || [];
 
+  const formatAddress = (address: string | undefined, length = 8) => {
+    if (!address) return "-";
+    if (address.length <= length * 2) return address;
+    return `${address.substring(0, length)}...${address.substring(address.length - length)}`;
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  const formatAmount = (amount: string | number | undefined) => {
+    if (!amount) return "-";
+    const num = typeof amount === "string" ? parseFloat(amount) : amount;
+    if (isNaN(num)) return amount.toString();
+    return new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 8,
+    }).format(num);
+  };
+
+  const formatDate = (date: string | Date | undefined) => {
+    if (!date) return "-";
+    return new Date(date).toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const getStatusColor = (status: string) => {
+    const normalized = status.toLowerCase();
+    if (normalized === "completed") return "#4caf50";
+    if (normalized === "pending" || normalized === "pending_payment") return "#ff9800";
+    if (normalized === "failed") return "#f44336";
+    return "#757575";
+  };
+
   const transactionsColumns: ColumnDef<Transaction>[] = [
     {
       accessorKey: "id",
-      header: "ID",
-      cell: (info: CellContext<Transaction, unknown>) => (
-        <span style={{ fontFamily: "monospace" }}>
-          {(info.getValue() as string).substring(0, 8)}...
-        </span>
-      ),
+      header: "Transaction ID",
+      cell: (info: CellContext<Transaction, unknown>) => {
+        const id = info.getValue() as string;
+        return (
+          <span
+            style={{
+              fontFamily: "monospace",
+              fontSize: "0.875rem",
+              cursor: "pointer",
+              position: "relative",
+            }}
+            title={id}
+            onClick={() => copyToClipboard(id)}
+          >
+            {formatAddress(id)}
+          </span>
+        );
+      },
     },
     {
       accessorKey: "userId",
       header: "User ID",
-      cell: (info: CellContext<Transaction, unknown>) => (
-        <span style={{ fontFamily: "monospace" }}>
-          {(info.getValue() as string).substring(0, 8)}...
-        </span>
-      ),
+      cell: (info: CellContext<Transaction, unknown>) => {
+        const userId = info.getValue() as string;
+        return (
+          <span
+            style={{
+              fontFamily: "monospace",
+              fontSize: "0.875rem",
+              cursor: "pointer",
+            }}
+            title={userId}
+            onClick={() => copyToClipboard(userId)}
+          >
+            {formatAddress(userId)}
+          </span>
+        );
+      },
     },
     {
-      accessorKey: "amount",
-      header: "Amount",
+      accessorKey: "walletAddress",
+      header: "Wallet Address",
+      cell: (info: CellContext<Transaction, unknown>) => {
+        const address = info.row.original.walletAddress;
+        if (!address) return <span style={{ color: "#999" }}>-</span>;
+        return (
+          <span
+            style={{
+              fontFamily: "monospace",
+              fontSize: "0.875rem",
+              cursor: "pointer",
+            }}
+            title={address}
+            onClick={() => copyToClipboard(address)}
+          >
+            {formatAddress(address)}
+          </span>
+        );
+      },
     },
     {
-      accessorKey: "currency",
-      header: "Currency",
+      accessorKey: "convertedAmount",
+      header: "Amount (Fiat)",
+      cell: (info: CellContext<Transaction, unknown>) => {
+        const transaction = info.row.original;
+        const amount = transaction.convertedAmount ?? transaction.amount;
+        const currency = transaction.currency || "";
+        if (!amount) return "-";
+        return (
+          <span>
+            {currency && `${currency} `}
+            {formatAmount(amount)}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: "amountB3TR",
+      header: "Amount (B3TR)",
+      cell: (info: CellContext<Transaction, unknown>) => {
+        const amountB3TR = info.row.original.amountB3TR;
+        if (!amountB3TR) return <span style={{ color: "#999" }}>-</span>;
+        try {
+          // Convert from wei if it's a large number (18 decimals)
+          // Handle both string and number inputs
+          const weiAmount = BigInt(amountB3TR);
+          // Use division with BigInt for precision, then convert to number
+          const divisor = BigInt(1e18);
+          const quotient = weiAmount / divisor;
+          const remainder = weiAmount % divisor;
+          const etherAmount = Number(quotient) + Number(remainder) / 1e18;
+          return <span>{formatAmount(etherAmount)} B3TR</span>;
+        } catch (error) {
+          // Fallback: try parsing as number directly
+          const num = parseFloat(amountB3TR);
+          if (!isNaN(num)) {
+            return <span>{formatAmount(num)} B3TR</span>;
+          }
+          return <span style={{ color: "#999" }}>-</span>;
+        }
+      },
     },
     {
       accessorKey: "status",
       header: "Status",
       cell: (info: CellContext<Transaction, unknown>) => {
         const status = info.getValue() as string;
+        const normalizedStatus = status.toLowerCase().replace(/_/g, "-");
         return (
           <span
-            className={`status-badge ${status.toLowerCase().replace("_", "-")}`}
+            className={`status-badge ${normalizedStatus}`}
+            style={{
+              backgroundColor: getStatusColor(status) + "20",
+              color: getStatusColor(status),
+              padding: "0.25rem 0.75rem",
+              borderRadius: "0.25rem",
+              fontSize: "0.875rem",
+              fontWeight: "500",
+              display: "inline-block",
+            }}
           >
-            {status}
+            {status.replace(/_/g, " ")}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: "bankName",
+      header: "Bank Details",
+      cell: (info: CellContext<Transaction, unknown>) => {
+        const transaction = info.row.original;
+        const bankName = transaction.bankName;
+        const accountNumber = transaction.accountNumber;
+        if (!bankName && !accountNumber) {
+          return <span style={{ color: "#999" }}>-</span>;
+        }
+        return (
+          <div style={{ fontSize: "0.875rem" }}>
+            {bankName && <div style={{ fontWeight: "500" }}>{bankName}</div>}
+            {accountNumber && (
+              <div style={{ color: "#666", fontFamily: "monospace" }}>
+                {accountNumber}
+              </div>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "transactionHash",
+      header: "Tx Hash",
+      cell: (info: CellContext<Transaction, unknown>) => {
+        const hash = info.row.original.transactionHash;
+        if (!hash) return <span style={{ color: "#999" }}>-</span>;
+        const explorerUrl = `https://explore.vechain.org/transactions/${hash}`;
+        return (
+          <a
+            href={explorerUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              fontFamily: "monospace",
+              fontSize: "0.875rem",
+              color: "#2196f3",
+              textDecoration: "none",
+            }}
+            title={hash}
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            {formatAddress(hash, 6)}
+          </a>
+        );
+      },
+    },
+    {
+      accessorKey: "transferReference",
+      header: "Transfer Ref",
+      cell: (info: CellContext<Transaction, unknown>) => {
+        const ref = info.row.original.transferReference;
+        if (!ref) return <span style={{ color: "#999" }}>-</span>;
+        return (
+          <span
+            style={{
+              fontFamily: "monospace",
+              fontSize: "0.875rem",
+              cursor: "pointer",
+            }}
+            title={ref}
+            onClick={() => copyToClipboard(ref)}
+          >
+            {ref.length > 12 ? `${ref.substring(0, 12)}...` : ref}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: "errorMessage",
+      header: "Error",
+      cell: (info: CellContext<Transaction, unknown>) => {
+        const error = info.row.original.errorMessage;
+        if (!error) return <span style={{ color: "#999" }}>-</span>;
+        return (
+          <span
+            style={{
+              color: "#f44336",
+              fontSize: "0.875rem",
+              maxWidth: "200px",
+              display: "inline-block",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+            title={error}
+          >
+            {error}
           </span>
         );
       },
@@ -109,8 +331,23 @@ export default function BankPage() {
     {
       accessorKey: "createdAt",
       header: "Created At",
-      cell: (info: CellContext<Transaction, unknown>) =>
-        new Date(info.getValue() as string).toLocaleString(),
+      cell: (info: CellContext<Transaction, unknown>) => {
+        const date = info.getValue() as string;
+        return (
+          <span style={{ fontSize: "0.875rem" }}>{formatDate(date)}</span>
+        );
+      },
+    },
+    {
+      accessorKey: "updatedAt",
+      header: "Updated At",
+      cell: (info: CellContext<Transaction, unknown>) => {
+        const date = info.row.original.updatedAt;
+        if (!date) return <span style={{ color: "#999" }}>-</span>;
+        return (
+          <span style={{ fontSize: "0.875rem" }}>{formatDate(date)}</span>
+        );
+      },
     },
   ];
 
@@ -180,11 +417,18 @@ export default function BankPage() {
       filterValue: string
     ) => {
       const search = filterValue.toLowerCase();
+      const transaction = row.original;
       return (
-        row.original.id.toLowerCase().includes(search) ||
-        row.original.userId.toLowerCase().includes(search) ||
-        row.original.currency.toLowerCase().includes(search) ||
-        row.original.status.toLowerCase().includes(search)
+        transaction.id.toLowerCase().includes(search) ||
+        transaction.userId.toLowerCase().includes(search) ||
+        transaction.currency?.toLowerCase().includes(search) ||
+        transaction.status.toLowerCase().includes(search) ||
+        transaction.walletAddress?.toLowerCase().includes(search) ||
+        transaction.transactionHash?.toLowerCase().includes(search) ||
+        transaction.transferReference?.toLowerCase().includes(search) ||
+        transaction.bankName?.toLowerCase().includes(search) ||
+        transaction.accountNumber?.toLowerCase().includes(search) ||
+        transaction.errorMessage?.toLowerCase().includes(search)
       );
     }) as FilterFn<Transaction>,
     state: {
@@ -298,13 +542,21 @@ export default function BankPage() {
   const error = transactionsError || ratesError;
   const stats = {
     total: transactions.length,
-    completed: transactions.filter((t: Transaction) => t.status === "COMPLETED")
-      .length,
-    pending: transactions.filter(
-      (t: Transaction) => t.status === "PENDING_PAYMENT"
+    completed: transactions.filter(
+      (t: Transaction) =>
+        t.status.toLowerCase() === "completed" ||
+        t.status === "COMPLETED"
     ).length,
-    failed: transactions.filter((t: Transaction) => t.status === "FAILED")
-      .length,
+    pending: transactions.filter(
+      (t: Transaction) =>
+        t.status.toLowerCase() === "pending" ||
+        t.status.toLowerCase() === "pending_payment" ||
+        t.status === "PENDING_PAYMENT"
+    ).length,
+    failed: transactions.filter(
+      (t: Transaction) =>
+        t.status.toLowerCase() === "failed" || t.status === "FAILED"
+    ).length,
   };
 
   return (
@@ -374,9 +626,9 @@ export default function BankPage() {
                   className="filter-select"
                 >
                   <option value="">All Statuses</option>
-                  <option value="COMPLETED">Completed</option>
-                  <option value="PENDING_PAYMENT">Pending Payment</option>
-                  <option value="FAILED">Failed</option>
+                  <option value="completed">Completed</option>
+                  <option value="pending">Pending</option>
+                  <option value="failed">Failed</option>
                 </select>
               </FilterBar>
               <SearchBar
@@ -410,11 +662,38 @@ export default function BankPage() {
                       .map((headerGroup) => (
                         <tr key={headerGroup.id}>
                           {headerGroup.headers.map((header) => (
-                            <th key={header.id}>
-                              {flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
+                            <th
+                              key={header.id}
+                              style={{
+                                cursor: header.column.getCanSort()
+                                  ? "pointer"
+                                  : "default",
+                                userSelect: "none",
+                                position: "relative",
+                              }}
+                              onClick={header.column.getToggleSortingHandler()}
+                            >
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "0.5rem",
+                                }}
+                              >
+                                {flexRender(
+                                  header.column.columnDef.header,
+                                  header.getContext()
+                                )}
+                                {header.column.getCanSort() && (
+                                  <span style={{ fontSize: "0.75rem" }}>
+                                    {{
+                                      asc: " ↑",
+                                      desc: " ↓",
+                                    }[header.column.getIsSorted() as string] ??
+                                    " ⇅"}
+                                  </span>
+                                )}
+                              </div>
                             </th>
                           ))}
                         </tr>
