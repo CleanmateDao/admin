@@ -16,6 +16,7 @@ import EmailPage from "./pages/EmailPage";
 import KycPage from "./pages/KycPage";
 import KycDetailPage from "./pages/KycDetailPage";
 import BankPage from "./pages/BankPage";
+import TransactionDetailPage from "./pages/TransactionDetailPage";
 import RewardsManagerPage from "./pages/RewardsManagerPage";
 import "./tailwind.css";
 import "./index.css";
@@ -120,6 +121,7 @@ function App() {
                   <Route path="/kyc" element={<KycPage />} />
                   <Route path="/kyc/:id" element={<KycDetailPage />} />
                   <Route path="/bank" element={<BankPage />} />
+                  <Route path="/bank/transactions/:id" element={<TransactionDetailPage />} />
                   <Route path="/rewards" element={<RewardsManagerPage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>

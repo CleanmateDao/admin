@@ -1,4 +1,5 @@
 import { useState, type ChangeEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   useReactTable,
   getCoreRowModel,
@@ -25,6 +26,7 @@ import { setApiKey, setBaseUrl, getBaseUrl } from "../lib/auth";
 import type { Transaction, ExchangeRate } from "../types/services";
 
 export default function BankPage() {
+  const navigate = useNavigate();
   const { authenticated, loading } = useServiceAuth("bank");
   const [activeTab, setActiveTab] = useState<"transactions" | "exchange-rates">(
     "transactions"
@@ -115,11 +117,14 @@ export default function BankPage() {
             style={{
               fontFamily: "monospace",
               fontSize: "0.875rem",
+              color: "#2196f3",
               cursor: "pointer",
-              position: "relative",
             }}
             title={id}
-            onClick={() => copyToClipboard(id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/bank/transactions/${id}`);
+            }}
           >
             {formatAddress(id)}
           </span>
@@ -136,10 +141,8 @@ export default function BankPage() {
             style={{
               fontFamily: "monospace",
               fontSize: "0.875rem",
-              cursor: "pointer",
             }}
             title={userId}
-            onClick={() => copyToClipboard(userId)}
           >
             {formatAddress(userId)}
           </span>
@@ -147,29 +150,8 @@ export default function BankPage() {
       },
     },
     {
-      accessorKey: "walletAddress",
-      header: "Wallet Address",
-      cell: (info: CellContext<Transaction, unknown>) => {
-        const address = info.row.original.walletAddress;
-        if (!address) return <span style={{ color: "#999" }}>-</span>;
-        return (
-          <span
-            style={{
-              fontFamily: "monospace",
-              fontSize: "0.875rem",
-              cursor: "pointer",
-            }}
-            title={address}
-            onClick={() => copyToClipboard(address)}
-          >
-            {formatAddress(address)}
-          </span>
-        );
-      },
-    },
-    {
       accessorKey: "convertedAmount",
-      header: "Amount (Fiat)",
+      header: "Amount",
       cell: (info: CellContext<Transaction, unknown>) => {
         const transaction = info.row.original;
         const amount = transaction.convertedAmount ?? transaction.amount;
@@ -181,32 +163,6 @@ export default function BankPage() {
             {formatAmount(amount)}
           </span>
         );
-      },
-    },
-    {
-      accessorKey: "amountB3TR",
-      header: "Amount (B3TR)",
-      cell: (info: CellContext<Transaction, unknown>) => {
-        const amountB3TR = info.row.original.amountB3TR;
-        if (!amountB3TR) return <span style={{ color: "#999" }}>-</span>;
-        try {
-          // Convert from wei if it's a large number (18 decimals)
-          // Handle both string and number inputs
-          const weiAmount = BigInt(amountB3TR);
-          // Use division with BigInt for precision, then convert to number
-          const divisor = BigInt(1e18);
-          const quotient = weiAmount / divisor;
-          const remainder = weiAmount % divisor;
-          const etherAmount = Number(quotient) + Number(remainder) / 1e18;
-          return <span>{formatAmount(etherAmount)} B3TR</span>;
-        } catch (error) {
-          // Fallback: try parsing as number directly
-          const num = parseFloat(amountB3TR);
-          if (!isNaN(num)) {
-            return <span>{formatAmount(num)} B3TR</span>;
-          }
-          return <span style={{ color: "#999" }}>-</span>;
-        }
       },
     },
     {
@@ -234,116 +190,10 @@ export default function BankPage() {
       },
     },
     {
-      accessorKey: "bankName",
-      header: "Bank Details",
-      cell: (info: CellContext<Transaction, unknown>) => {
-        const transaction = info.row.original;
-        const bankName = transaction.bankName;
-        const accountNumber = transaction.accountNumber;
-        if (!bankName && !accountNumber) {
-          return <span style={{ color: "#999" }}>-</span>;
-        }
-        return (
-          <div style={{ fontSize: "0.875rem" }}>
-            {bankName && <div style={{ fontWeight: "500" }}>{bankName}</div>}
-            {accountNumber && (
-              <div style={{ color: "#666", fontFamily: "monospace" }}>
-                {accountNumber}
-              </div>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      accessorKey: "transactionHash",
-      header: "Tx Hash",
-      cell: (info: CellContext<Transaction, unknown>) => {
-        const hash = info.row.original.transactionHash;
-        if (!hash) return <span style={{ color: "#999" }}>-</span>;
-        const explorerUrl = `https://explore.vechain.org/transactions/${hash}`;
-        return (
-          <a
-            href={explorerUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              fontFamily: "monospace",
-              fontSize: "0.875rem",
-              color: "#2196f3",
-              textDecoration: "none",
-            }}
-            title={hash}
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-          >
-            {formatAddress(hash, 6)}
-          </a>
-        );
-      },
-    },
-    {
-      accessorKey: "transferReference",
-      header: "Transfer Ref",
-      cell: (info: CellContext<Transaction, unknown>) => {
-        const ref = info.row.original.transferReference;
-        if (!ref) return <span style={{ color: "#999" }}>-</span>;
-        return (
-          <span
-            style={{
-              fontFamily: "monospace",
-              fontSize: "0.875rem",
-              cursor: "pointer",
-            }}
-            title={ref}
-            onClick={() => copyToClipboard(ref)}
-          >
-            {ref.length > 12 ? `${ref.substring(0, 12)}...` : ref}
-          </span>
-        );
-      },
-    },
-    {
-      accessorKey: "errorMessage",
-      header: "Error",
-      cell: (info: CellContext<Transaction, unknown>) => {
-        const error = info.row.original.errorMessage;
-        if (!error) return <span style={{ color: "#999" }}>-</span>;
-        return (
-          <span
-            style={{
-              color: "#f44336",
-              fontSize: "0.875rem",
-              maxWidth: "200px",
-              display: "inline-block",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-            title={error}
-          >
-            {error}
-          </span>
-        );
-      },
-    },
-    {
       accessorKey: "createdAt",
       header: "Created At",
       cell: (info: CellContext<Transaction, unknown>) => {
         const date = info.getValue() as string;
-        return (
-          <span style={{ fontSize: "0.875rem" }}>{formatDate(date)}</span>
-        );
-      },
-    },
-    {
-      accessorKey: "updatedAt",
-      header: "Updated At",
-      cell: (info: CellContext<Transaction, unknown>) => {
-        const date = info.row.original.updatedAt;
-        if (!date) return <span style={{ color: "#999" }}>-</span>;
         return (
           <span style={{ fontSize: "0.875rem" }}>{formatDate(date)}</span>
         );
@@ -701,7 +551,19 @@ export default function BankPage() {
                   </thead>
                   <tbody>
                     {transactionsTable.getRowModel().rows.map((row) => (
-                      <tr key={row.id}>
+                      <tr
+                        key={row.id}
+                        onClick={() => navigate(`/bank/transactions/${row.original.id}`)}
+                        style={{
+                          cursor: "pointer",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = "rgba(0, 0, 0, 0.05)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = "";
+                        }}
+                      >
                         {row.getVisibleCells().map((cell) => (
                           <td key={cell.id}>
                             {flexRender(
