@@ -203,9 +203,10 @@ export default function RewardsManagerPage() {
       // Clear any previous errors
       setCleanupError("");
 
-      const accepted = selectedCleanupData.participants.filter(
-        (p) => p.status === "accepted"
-      );
+      const participants = Array.isArray(selectedCleanupData.participants)
+        ? selectedCleanupData.participants
+        : [];
+      const accepted = participants.filter((p) => p.status === "accepted");
 
       if (accepted.length > 0) {
         setParticipantRewards(
@@ -253,9 +254,12 @@ export default function RewardsManagerPage() {
     const map = new Map<string, string>();
     userQueries.forEach((query, index) => {
       if (query.data && participantAddresses[index]) {
-        const name = getUserName(query.data.metadata);
-        if (name) {
-          map.set(participantAddresses[index].toLowerCase(), name);
+        const address = participantAddresses[index];
+        if (address && typeof address === 'string') {
+          const name = getUserName(query.data.metadata);
+          if (name) {
+            map.set(address.toLowerCase(), name);
+          }
         }
       }
     });
@@ -610,9 +614,10 @@ export default function RewardsManagerPage() {
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         {
-                          selectedCleanupData.participants.filter(
-                            (p) => p.status === "accepted"
-                          ).length
+                          (Array.isArray(selectedCleanupData.participants)
+                            ? selectedCleanupData.participants
+                            : []
+                          ).filter((p) => p.status === "accepted").length
                         }{" "}
                         accepted participants
                       </p>
@@ -664,10 +669,13 @@ export default function RewardsManagerPage() {
                       </thead>
                       <tbody>
                         {participantRewards.map((participant, index) => {
+                          const address = participant.address;
+                          const addressKey = address && typeof address === 'string' 
+                            ? address.toLowerCase() 
+                            : '';
                           const userName =
-                            addressToUserName.get(
-                              participant.address.toLowerCase()
-                            ) || participant.userName;
+                            (addressKey ? addressToUserName.get(addressKey) : null) ||
+                            participant.userName;
                           const isAutoLoaded =
                             !!selectedCleanup && participant.address;
                           return (

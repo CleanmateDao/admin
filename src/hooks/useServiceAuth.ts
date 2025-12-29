@@ -1,19 +1,10 @@
-import { useState, useEffect } from "react";
-import { getApiKey, getBaseUrl } from "../lib/auth";
+import { ApiKeyKey, useApiKey } from "../contexts/ApiKeyContext";
 
-type Service = "email" | "kyc" | "bank";
+export function useServiceAuth(key: ApiKeyKey) {
+  const { apiKey } = useApiKey();
 
-export function useServiceAuth(service: Service) {
-  const [authenticated, setAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const apiKey = getApiKey(service);
-    const baseUrl = getBaseUrl(service);
-    setAuthenticated(!!(apiKey && baseUrl));
-    setLoading(false);
-  }, [service]);
-
-  return { authenticated, loading };
+  return {
+    authenticated: !!apiKey[key],
+    loading: false,
+  };
 }
-

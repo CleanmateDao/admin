@@ -22,12 +22,15 @@ import {
   useExchangeRates,
   useBankMutations,
 } from "../hooks/useBank";
-import { setApiKey, setBaseUrl, getBaseUrl } from "../lib/auth";
+import { useApiKey } from "../contexts/ApiKeyContext";
 import type { Transaction, ExchangeRate } from "../types/services";
+
+const BANK_BASE_URL = "http://localhost:3002";
 
 export default function BankPage() {
   const navigate = useNavigate();
   const { authenticated, loading } = useServiceAuth("bank");
+  const { setApiKey, clearApiKey } = useApiKey();
   const [activeTab, setActiveTab] = useState<"transactions" | "exchange-rates">(
     "transactions"
   );
@@ -53,7 +56,7 @@ export default function BankPage() {
   );
 
   const {
-    data: exchangeRatesData = [],
+    data: exchangeRatesDataRaw,
     isLoading: isLoadingRates,
     error: ratesError,
   } = useExchangeRates(activeTab);
@@ -65,7 +68,15 @@ export default function BankPage() {
     isDeletingExchangeRate,
   } = useBankMutations();
 
-  const transactions = transactionsData?.data || [];
+  // Ensure transactions is always an array
+  // The hook now returns the array directly, but we still need to handle edge cases
+  const transactions = Array.isArray(transactionsData)
+    ? transactionsData
+    : [];
+  // Ensure exchangeRatesData is always an array
+  const exchangeRatesData = Array.isArray(exchangeRatesDataRaw)
+    ? exchangeRatesDataRaw
+    : [];
 
   const formatAddress = (address: string | undefined, length = 8) => {
     if (!address) return "-";
@@ -98,7 +109,8 @@ export default function BankPage() {
     });
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | null | undefined) => {
+    if (!status || typeof status !== 'string') return "#757575";
     const normalized = status.toLowerCase();
     if (normalized === "completed") return "#4caf50";
     if (normalized === "pending" || normalized === "pending_payment") return "#ff9800";
@@ -169,7 +181,10 @@ export default function BankPage() {
       accessorKey: "status",
       header: "Status",
       cell: (info: CellContext<Transaction, unknown>) => {
-        const status = info.getValue() as string;
+        const status = info.getValue() as string | null | undefined;
+        if (!status || typeof status !== 'string') {
+          return <span className="status-badge">Unknown</span>;
+        }
         const normalizedStatus = status.toLowerCase().replace(/_/g, "-");
         return (
           <span
@@ -268,17 +283,18 @@ export default function BankPage() {
     ) => {
       const search = filterValue.toLowerCase();
       const transaction = row.original;
+      if (!transaction) return false;
       return (
-        transaction.id.toLowerCase().includes(search) ||
-        transaction.userId.toLowerCase().includes(search) ||
-        transaction.currency?.toLowerCase().includes(search) ||
-        transaction.status.toLowerCase().includes(search) ||
-        transaction.walletAddress?.toLowerCase().includes(search) ||
-        transaction.transactionHash?.toLowerCase().includes(search) ||
-        transaction.transferReference?.toLowerCase().includes(search) ||
-        transaction.bankName?.toLowerCase().includes(search) ||
-        transaction.accountNumber?.toLowerCase().includes(search) ||
-        transaction.errorMessage?.toLowerCase().includes(search)
+        (transaction.id?.toLowerCase() || "").includes(search) ||
+        (transaction.userId?.toLowerCase() || "").includes(search) ||
+        (transaction.currency?.toLowerCase() || "").includes(search) ||
+        (transaction.status?.toLowerCase() || "").includes(search) ||
+        (transaction.walletAddress?.toLowerCase() || "").includes(search) ||
+        (transaction.transactionHash?.toLowerCase() || "").includes(search) ||
+        (transaction.transferReference?.toLowerCase() || "").includes(search) ||
+        (transaction.bankName?.toLowerCase() || "").includes(search) ||
+        (transaction.accountNumber?.toLowerCase() || "").includes(search) ||
+        (transaction.errorMessage?.toLowerCase() || "").includes(search)
       );
     }) as FilterFn<Transaction>,
     state: {
@@ -304,10 +320,12 @@ export default function BankPage() {
       filterValue: string
     ) => {
       const search = filterValue.toLowerCase();
+      const rate = row.original;
+      if (!rate) return false;
       return (
-        row.original.currencyCode.toLowerCase().includes(search) ||
-        row.original.currencyName.toLowerCase().includes(search) ||
-        row.original.symbol.toLowerCase().includes(search)
+        (rate.currencyCode?.toLowerCase() || "").includes(search) ||
+        (rate.currencyName?.toLowerCase() || "").includes(search) ||
+        (rate.symbol?.toLowerCase() || "").includes(search)
       );
     }) as FilterFn<ExchangeRate>,
     state: {
@@ -315,10 +333,8 @@ export default function BankPage() {
     },
   });
 
-  const handleAuthenticate = (apiKey: string, baseUrl: string) => {
+  const handleAuthenticate = (apiKey: string) => {
     setApiKey("bank", apiKey);
-    setBaseUrl("bank", baseUrl);
-    window.location.reload();
   };
 
   const handleLogout = () => {
@@ -330,9 +346,7 @@ export default function BankPage() {
     setShowExchangeRateModal(false);
     setEditingExchangeRate(null);
     setDeletingExchangeRate(null);
-    localStorage.removeItem("admin_api_key_bank");
-    localStorage.removeItem("admin_api_key_bank_url");
-    window.location.reload();
+    clearApiKey();
   };
 
   const handleClearDateRange = () => {
@@ -384,28 +398,35 @@ export default function BankPage() {
       <ApiKeyPrompt
         serviceName="Bank"
         onAuthenticate={handleAuthenticate}
-        defaultBaseUrl={getBaseUrl("bank")}
       />
     );
   }
 
   const error = transactionsError || ratesError;
+  // Ensure transactions is an array before calculating stats
+  const safeTransactions = Array.isArray(transactions) ? transactions : [];
   const stats = {
-    total: transactions.length,
-    completed: transactions.filter(
+    total: safeTransactions.length,
+    completed: safeTransactions.filter(
       (t: Transaction) =>
-        t.status.toLowerCase() === "completed" ||
-        t.status === "COMPLETED"
+        t?.status &&
+        typeof t.status === 'string' &&
+        (t.status.toLowerCase() === "completed" ||
+          t.status === "COMPLETED")
     ).length,
-    pending: transactions.filter(
+    pending: safeTransactions.filter(
       (t: Transaction) =>
-        t.status.toLowerCase() === "pending" ||
-        t.status.toLowerCase() === "pending_payment" ||
-        t.status === "PENDING_PAYMENT"
+        t?.status &&
+        typeof t.status === 'string' &&
+        (t.status.toLowerCase() === "pending" ||
+          t.status.toLowerCase() === "pending_payment" ||
+          t.status === "PENDING_PAYMENT")
     ).length,
-    failed: transactions.filter(
+    failed: safeTransactions.filter(
       (t: Transaction) =>
-        t.status.toLowerCase() === "failed" || t.status === "FAILED"
+        t?.status &&
+        typeof t.status === 'string' &&
+        (t.status.toLowerCase() === "failed" || t.status === "FAILED")
     ).length,
   };
 

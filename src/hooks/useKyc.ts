@@ -1,18 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useApiClient } from "./useApiClient";
-import type { KycSubmission } from "../types/services";
+import { kycClient } from "../services/clients/kyc";
+import { useApiKey } from "../contexts/ApiKeyContext";
 
 export function useKycSubmissions(
   statusFilter?: string,
   startDate?: string,
   endDate?: string
 ) {
-  const apiClient = useApiClient("kyc");
+  const { apiKey } = useApiKey();
+
+  const kycApiKey = apiKey["kyc"];
 
   return useQuery({
-    queryKey: ["kyc-submissions", statusFilter, startDate, endDate, apiClient],
+    queryKey: ["kyc-submissions", statusFilter, startDate, endDate],
     queryFn: async () => {
-      if (!apiClient) throw new Error("Not authenticated");
       const params = new URLSearchParams();
       if (statusFilter) {
         params.append("status", statusFilter);
@@ -27,28 +28,47 @@ export function useKycSubmissions(
       const endpoint = queryString
         ? `/kyc/admin/submissions?${queryString}`
         : "/kyc/admin/submissions";
-      return apiClient.get<KycSubmission[]>(endpoint);
+
+      const response = await kycClient.get(endpoint, {
+        headers: {
+          "x-api-key": kycApiKey,
+        },
+      });
+      // KYC service returns array directly, so response.data is the array
+      return Array.isArray(response.data) ? response.data : [];
     },
-    enabled: !!apiClient,
+    enabled: !!kycApiKey,
   });
 }
 
 export function useKycSubmissionDetails(submissionId: string | null) {
-  const apiClient = useApiClient("kyc");
+  const { apiKey } = useApiKey();
+
+  const kycApiKey = apiKey["kyc"];
 
   return useQuery({
-    queryKey: ["kyc-submission-details", submissionId, apiClient],
+    queryKey: ["kyc-submission-details", submissionId],
     queryFn: async () => {
-      if (!apiClient || !submissionId) throw new Error("Not authenticated");
-      return apiClient.get<KycSubmission>(`/kyc/admin/submissions/${submissionId}`);
+      if (!submissionId) throw new Error("Submission ID is required");
+      const response = await kycClient.get(
+        `/kyc/admin/submissions/${submissionId}`,
+        {
+          headers: {
+            "x-api-key": kycApiKey,
+          },
+        }
+      );
+      return response.data;
     },
-    enabled: !!apiClient && !!submissionId,
+    enabled: !!kycApiKey && !!submissionId,
   });
 }
 
 export function useKycMutations() {
-  const apiClient = useApiClient("kyc");
   const queryClient = useQueryClient();
+  const { apiKey } = useApiKey();
+
+  const kycApiKey = apiKey["kyc"];
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({
@@ -60,13 +80,20 @@ export function useKycMutations() {
       status: string;
       rejectionReason?: string;
     }) => {
-      if (!apiClient) throw new Error("Not authenticated");
-      return apiClient.post("/kyc/admin/update-status", {
-        submissionId,
-        status,
-        rejectionReason,
-        reviewedBy: "admin",
-      });
+      return kycClient.post(
+        "/kyc/admin/update-status",
+        {
+          submissionId,
+          status,
+          rejectionReason,
+          reviewedBy: "admin",
+        },
+        {
+          headers: {
+            "x-api-key": kycApiKey,
+          },
+        }
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["kyc-submissions"] });
@@ -82,11 +109,18 @@ export function useKycMutations() {
       userAddress: string;
       isOrganizer: boolean;
     }) => {
-      if (!apiClient) throw new Error("Not authenticated");
-      return apiClient.post("/kyc/admin/set-organizer-status", {
-        userAddress,
-        isOrganizer,
-      });
+      return kycClient.post(
+        "/kyc/admin/set-organizer-status",
+        {
+          userAddress,
+          isOrganizer,
+        },
+        {
+          headers: {
+            "x-api-key": kycApiKey,
+          },
+        }
+      );
     },
     onSuccess: () => {
       // Invalidate user queries to refresh the user data
@@ -104,4 +138,3 @@ export function useKycMutations() {
     isSettingOrganizerStatus: setOrganizerStatusMutation.isPending,
   };
 }
-

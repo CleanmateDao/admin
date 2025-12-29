@@ -31,7 +31,8 @@ export default function KycDetailPage() {
     );
   }
 
-  const getStatusBadgeClass = (status: string) => {
+  const getStatusBadgeClass = (status: string | null | undefined) => {
+    if (!status || typeof status !== 'string') return "status-badge";
     switch (status.toLowerCase()) {
       case "pending":
         return "status-badge pending";
@@ -44,7 +45,8 @@ export default function KycDetailPage() {
     }
   };
 
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = (status: string | null | undefined) => {
+    if (!status || typeof status !== 'string') return status || 'Unknown';
     switch (status.toLowerCase()) {
       case 'pending':
         return 'Pending';

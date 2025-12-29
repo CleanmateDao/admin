@@ -5,6 +5,7 @@ import {
 } from "@vechain/vechain-kit";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { StreakCartProvider } from "./contexts/StreakCartContext";
+import { ApiKeyProvider } from "./contexts/ApiKeyContext";
 import Layout from "./components/Layout";
 import StreaksPage from "./pages/StreaksPage";
 import StreakDetailPage from "./pages/StreakDetailPage";
@@ -37,8 +38,9 @@ function App() {
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
-        <StreakCartProvider>
-          <VeChainKitProvider
+        <ApiKeyProvider>
+          <StreakCartProvider>
+            <VeChainKitProvider
           feeDelegation={{
             delegatorUrl: import.meta.env.VITE_DELEGATOR_URL!,
             delegateAllTransactions: true,
@@ -130,6 +132,7 @@ function App() {
           </TransactionModalProvider>
         </VeChainKitProvider>
         </StreakCartProvider>
+        </ApiKeyProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );

@@ -48,7 +48,8 @@ export default function TransactionDetailPage() {
     });
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | null | undefined) => {
+    if (!status || typeof status !== 'string') return "#757575";
     const normalized = status.toLowerCase();
     if (normalized === "completed") return "#4caf50";
     if (normalized === "pending" || normalized === "pending_payment")

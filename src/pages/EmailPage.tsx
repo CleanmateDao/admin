@@ -4,28 +4,27 @@ import SearchBar from "../components/SearchBar";
 import Pagination from "../components/Pagination";
 import { useServiceAuth } from "../hooks/useServiceAuth";
 import { useEmailStatus } from "../hooks/useEmail";
-import { setApiKey, setBaseUrl, getBaseUrl } from "../lib/auth";
+import { useApiKey } from "../contexts/ApiKeyContext";
+
+const EMAIL_BASE_URL = "http://localhost:3000";
 
 export default function EmailPage() {
   const { authenticated, loading } = useServiceAuth("email");
+  const { setApiKey, clearApiKey } = useApiKey();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
   const { data: status, error, isLoading } = useEmailStatus();
 
-  const handleAuthenticate = (apiKey: string, baseUrl: string) => {
+  const handleAuthenticate = (apiKey: string) => {
     setApiKey("email", apiKey);
-    setBaseUrl("email", baseUrl);
-    window.location.reload();
   };
 
   const handleLogout = () => {
     setSearchQuery("");
     setCurrentPage(1);
-    localStorage.removeItem("admin_api_key_email");
-    localStorage.removeItem("admin_api_key_email_url");
-    window.location.reload();
+    clearApiKey();
   };
 
   if (loading) {
@@ -37,7 +36,6 @@ export default function EmailPage() {
       <ApiKeyPrompt
         serviceName="Email"
         onAuthenticate={handleAuthenticate}
-        defaultBaseUrl={getBaseUrl("email")}
       />
     );
   }
@@ -132,7 +130,7 @@ export default function EmailPage() {
 
       <div className="content-section">
         <h2>Service Information</h2>
-        <p className="text-foreground">Base URL: {getBaseUrl("email")}</p>
+        <p className="text-foreground">Base URL: {EMAIL_BASE_URL}</p>
         <p className="text-foreground">API endpoints available:</p>
         <ul className="ml-6 mt-2 list-disc text-foreground">
           <li>GET /health - Health check</li>

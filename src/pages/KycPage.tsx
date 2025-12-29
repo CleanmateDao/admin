@@ -22,12 +22,14 @@ import {
   useKycSubmissionDetails,
   useKycMutations,
 } from "../hooks/useKyc";
-import { setApiKey, setBaseUrl, getBaseUrl } from "../lib/auth";
+import { useApiKey } from "../contexts/ApiKeyContext";
 import type { KycSubmission } from "../types/services";
+
 
 export default function KycPage() {
   const navigate = useNavigate();
   const { authenticated, loading } = useServiceAuth("kyc");
+  const { setApiKey, clearApiKey } = useApiKey();
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
@@ -38,7 +40,7 @@ export default function KycPage() {
   const [showRejectModal, setShowRejectModal] = useState(false);
 
   const {
-    data: submissions = [],
+    data: submissionsData,
     isLoading,
     error,
   } = useKycSubmissions(
@@ -47,13 +49,20 @@ export default function KycPage() {
     endDate || undefined
   );
 
+  // Ensure submissions is always an array
+  // The hook now returns the array directly, but we still need to handle edge cases
+  const submissions = Array.isArray(submissionsData)
+    ? submissionsData
+    : [];
+
   const { data: submissionDetails } = useKycSubmissionDetails(
     selectedSubmission?.submissionId || null
   );
 
   const { updateStatus, isUpdating } = useKycMutations();
 
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = (status: string | null | undefined) => {
+    if (!status || typeof status !== 'string') return status || 'Unknown';
     switch (status.toLowerCase()) {
       case 'pending':
         return 'Pending';
@@ -108,9 +117,10 @@ export default function KycPage() {
       accessorKey: "status",
       header: "Status",
       cell: (info: CellContext<KycSubmission, unknown>) => {
-        const status = info.getValue() as string;
+        const status = info.getValue() as string | null | undefined;
+        const statusStr = status && typeof status === 'string' ? status.toLowerCase() : '';
         return (
-          <span className={`status-badge ${status.toLowerCase()}`}>
+          <span className={`status-badge ${statusStr}`}>
             {getStatusLabel(status)}
           </span>
         );
@@ -155,14 +165,15 @@ export default function KycPage() {
     ) => {
       const search = filterValue.toLowerCase();
       const submission = row.original;
+      if (!submission) return false;
       return (
-        submission.firstName.toLowerCase().includes(search) ||
-        submission.lastName.toLowerCase().includes(search) ||
-        submission.email.toLowerCase().includes(search) ||
-        (submission.walletAddress?.toLowerCase().includes(search) ?? false) ||
-        submission.status.toLowerCase().includes(search) ||
-        submission.submissionId.toLowerCase().includes(search) ||
-        submission.userId.toLowerCase().includes(search)
+        (submission.firstName?.toLowerCase() || "").includes(search) ||
+        (submission.lastName?.toLowerCase() || "").includes(search) ||
+        (submission.email?.toLowerCase() || "").includes(search) ||
+        (submission.walletAddress?.toLowerCase() || "").includes(search) ||
+        (submission.status?.toLowerCase() || "").includes(search) ||
+        (submission.submissionId?.toLowerCase() || "").includes(search) ||
+        (submission.userId?.toLowerCase() || "").includes(search)
       );
     }) as FilterFn<KycSubmission>,
     state: {
@@ -170,10 +181,8 @@ export default function KycPage() {
     },
   });
 
-  const handleAuthenticate = (apiKey: string, baseUrl: string) => {
+  const handleAuthenticate = (apiKey: string) => {
     setApiKey("kyc", apiKey);
-    setBaseUrl("kyc", baseUrl);
-    window.location.reload(); // Reload to update auth state
   };
 
   const handleLogout = () => {
@@ -184,10 +193,7 @@ export default function KycPage() {
     setSelectedSubmission(null);
     setShowApproveModal(false);
     setShowRejectModal(false);
-    // Clear auth and reload
-    localStorage.removeItem("admin_api_key_kyc");
-    localStorage.removeItem("admin_api_key_kyc_url");
-    window.location.reload();
+    clearApiKey();
   };
 
   const handleClearDateRange = () => {
@@ -237,18 +243,19 @@ export default function KycPage() {
       <ApiKeyPrompt
         serviceName="KYC"
         onAuthenticate={handleAuthenticate}
-        defaultBaseUrl={getBaseUrl("kyc")}
       />
     );
   }
 
+  // Ensure submissions is an array before calculating stats
+  const safeSubmissions = Array.isArray(submissions) ? submissions : [];
   const stats = {
-    total: submissions.length,
-    pending: submissions.filter((s: KycSubmission) => s.status === "pending")
+    total: safeSubmissions.length,
+    pending: safeSubmissions.filter((s: KycSubmission) => s?.status === "pending")
       .length,
-    approved: submissions.filter((s: KycSubmission) => s.status === "approved")
+    approved: safeSubmissions.filter((s: KycSubmission) => s?.status === "approved")
       .length,
-    rejected: submissions.filter((s: KycSubmission) => s.status === "rejected")
+    rejected: safeSubmissions.filter((s: KycSubmission) => s?.status === "rejected")
       .length,
   };
 
@@ -323,7 +330,7 @@ export default function KycPage() {
 
         {isLoading ? (
           <div className="loading">Loading submissions...</div>
-        ) : submissions.length === 0 ? (
+        ) : !Array.isArray(submissions) || submissions.length === 0 ? (
           <p>No submissions found</p>
         ) : (
           <>

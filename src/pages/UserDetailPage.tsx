@@ -1,7 +1,10 @@
 import { useParams, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { useUser } from "../hooks/useUsers";
 import { useKycMutations } from "../hooks/useKyc";
+import { useSetUserReferralCode } from "../hooks/useUserRegistry";
 import { Button } from "../components/ui/Button";
+import UpdateReferralCodeModal from "../components/UpdateReferralCodeModal";
 import {
   formatAddress,
   formatDate,
@@ -11,12 +14,15 @@ import {
   getUserLocation,
 } from "../helpers/format";
 import { formatEther } from "viem";
+import { toast } from "sonner";
 
 export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: user, isLoading } = useUser(id || null);
   const { setOrganizerStatus, isSettingOrganizerStatus } = useKycMutations();
+  const { setUserReferralCode, isPending: isUpdatingReferralCode } = useSetUserReferralCode();
+  const [showUpdateReferralCodeModal, setShowUpdateReferralCodeModal] = useState(false);
 
   if (isLoading) {
     return (
@@ -116,9 +122,19 @@ export default function UserDetailPage() {
             </p>
           </div>
           <div>
-            <label className="text-sm text-muted-foreground">
-              Referral Code
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm text-muted-foreground">
+                Referral Code
+              </label>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowUpdateReferralCodeModal(true)}
+                disabled={isUpdatingReferralCode}
+              >
+                Update
+              </Button>
+            </div>
             <p className="text-foreground">{user.referralCode || "N/A"}</p>
           </div>
           {user.referrer && (
@@ -275,6 +291,32 @@ export default function UserDetailPage() {
           </div>
         )}
       </div>
+
+      <UpdateReferralCodeModal
+        isOpen={showUpdateReferralCodeModal}
+        onClose={() => setShowUpdateReferralCodeModal(false)}
+        onConfirm={(referralCode) => {
+          setUserReferralCode(
+            {
+              userAddress: user.id,
+              referralCode,
+            },
+            {
+              onSuccess: () => {
+                setShowUpdateReferralCodeModal(false);
+                toast.success("Referral code updated successfully");
+              },
+              onError: (error) => {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                toast.error(`Failed to update referral code: ${errorMessage || "Unknown error"}`);
+              },
+            }
+          );
+        }}
+        currentReferralCode={user.referralCode}
+        userAddress={user.id}
+        isLoading={isUpdatingReferralCode}
+      />
     </div>
   );
 }

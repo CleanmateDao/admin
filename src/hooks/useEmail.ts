@@ -1,18 +1,23 @@
 import { useQuery } from "@tanstack/react-query";
-import { useApiClient } from "./useApiClient";
-import type { EmailStatus } from "../types/services";
+import { emailClient } from "../services/clients/email";
+import { useApiKey } from "../contexts/ApiKeyContext";
 
 export function useEmailStatus() {
-  const apiClient = useApiClient("email");
+  const { apiKey } = useApiKey();
+
+  const emailApiKey = apiKey["email"];
 
   return useQuery({
-    queryKey: ["email-status", apiClient],
+    queryKey: ["email-status"],
     queryFn: async () => {
-      if (!apiClient) throw new Error("Not authenticated");
-      return apiClient.get<EmailStatus>("/status");
+      const response = await emailClient.get("/status", {
+        headers: {
+          "x-api-key": emailApiKey,
+        },
+      });
+      return response.data;
     },
-    enabled: !!apiClient,
+    enabled: !!emailApiKey,
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 }
-

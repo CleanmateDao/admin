@@ -5,10 +5,7 @@ import { nodePolyfills } from "vite-plugin-node-polyfills";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  plugins: [
-    react(),
-    mode === "development" ? undefined : nodePolyfills(),
-  ].filter(Boolean),
+  plugins: [react(), nodePolyfills()],
   server: {
     port: 5175,
   },
@@ -27,16 +24,16 @@ export default defineConfig(({ mode }) => ({
       https: "https-browserify",
       url: "url",
       util: "util",
-      os: "os-browserify",
+      os: "os-browserify/browser",
     },
+  },
+  define: {
+    "process.env": {},
   },
   build: {
     minify: "esbuild",
     commonjsOptions: { transformMixedEsModules: true },
     chunkSizeWarningLimit: 1000,
-    rollupOptions: {
-      // external: ["@privy-io/react-auth"],
-    },
   },
   optimizeDeps: {
     include: [

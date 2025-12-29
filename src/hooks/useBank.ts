@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useApiClient } from "./useApiClient";
+import { bankClient } from "../services/clients/bank";
+import { useApiKey } from "../contexts/ApiKeyContext";
 import type {
   Transaction,
   ExchangeRate,
@@ -12,18 +13,13 @@ export function useBankTransactions(
   startDate?: string,
   endDate?: string
 ) {
-  const apiClient = useApiClient("bank");
+  const { apiKey } = useApiKey();
+
+  const bankApiKey = apiKey["bank"];
 
   return useQuery({
-    queryKey: [
-      "bank-transactions",
-      statusFilter,
-      startDate,
-      endDate,
-      apiClient,
-    ],
+    queryKey: ["bank-transactions", statusFilter, startDate, endDate],
     queryFn: async () => {
-      if (!apiClient) throw new Error("Not authenticated");
       const params = new URLSearchParams();
       params.append("limit", "100");
       if (statusFilter) {
@@ -35,35 +31,56 @@ export function useBankTransactions(
       if (endDate) {
         params.append("endDate", endDate);
       }
-      const endpoint = `/api/admin/transactions?${params.toString()}`;
-      return apiClient.get<{ data: Transaction[]; pagination: unknown }>(
-        endpoint
+      const response = await bankClient.get(
+        `/api/admin/transactions?${params.toString()}`,
+        {
+          headers: {
+            "x-api-key": bankApiKey,
+          },
+        }
       );
+      // Extract the data from the API response structure: { success: true, data: [...], pagination: {...} }
+      return response.data?.data || [];
     },
-    enabled: !!apiClient && activeTab === "transactions",
+    enabled: !!bankApiKey && activeTab === "transactions",
   });
 }
 
 export function useExchangeRates(activeTab?: string) {
-  const apiClient = useApiClient("bank");
+  const { apiKey } = useApiKey();
+
+  const bankApiKey = apiKey["bank"];
 
   return useQuery({
-    queryKey: ["exchange-rates", apiClient],
+    queryKey: ["exchange-rates"],
     queryFn: async () => {
-      if (!apiClient) throw new Error("Not authenticated");
-      const response = await apiClient.get<{
-        success: boolean;
-        data: Array<{
+      const response = await bankClient.get("/api/admin/exchange-rates", {
+        headers: {
+          "x-api-key": bankApiKey,
+        },
+      });
+
+      // Extract the data array from the API response structure: { success: true, data: [...] }
+      // response.data is the axios response data, which contains { success: true, data: [...] }
+      const apiResponse = response.data as {
+        success?: boolean;
+        data?: Array<{
           code: string;
           name: string;
           symbol: string;
           rateToB3TR: number;
           lastUpdated: string;
         }>;
-      }>("/api/admin/exchange-rates");
+      };
+
+      const ratesArray = Array.isArray(apiResponse?.data)
+        ? apiResponse.data
+        : Array.isArray(response.data)
+        ? response.data
+        : [];
 
       // Map the response to match our ExchangeRate interface
-      return response.data.map((rate) => ({
+      return ratesArray.map((rate: any) => ({
         id: rate.code,
         currencyCode: rate.code,
         currencyName: rate.name,
@@ -71,30 +88,37 @@ export function useExchangeRates(activeTab?: string) {
         rateToB3TR: rate.rateToB3TR.toString(),
       }));
     },
-    enabled: !!apiClient && activeTab === "exchange-rates",
+    enabled: !!bankApiKey && activeTab === "exchange-rates",
   });
 }
 
 export function useBankMutations() {
-  const apiClient = useApiClient("bank");
   const queryClient = useQueryClient();
+  const { apiKey } = useApiKey();
+
+  const bankApiKey = apiKey["bank"];
 
   const setExchangeRateMutation = useMutation({
     mutationFn: async ({
       data,
-      isEditing,
     }: {
       data: ExchangeRateInput;
       isEditing: boolean;
     }) => {
-      if (!apiClient) throw new Error("Not authenticated");
-      // Use admin endpoint for consistency
-      return apiClient.post("/api/admin/exchange-rate", {
-        currencyCode: data.currencyCode,
-        currencyName: data.currencyName,
-        symbol: data.symbol,
-        rateToB3TR: parseFloat(data.rateToB3TR),
-      });
+      return bankClient.post(
+        "/api/admin/exchange-rate",
+        {
+          currencyCode: data.currencyCode,
+          currencyName: data.currencyName,
+          symbol: data.symbol,
+          rateToB3TR: parseFloat(data.rateToB3TR),
+        },
+        {
+          headers: {
+            "x-api-key": bankApiKey,
+          },
+        }
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["exchange-rates"] });
@@ -104,8 +128,11 @@ export function useBankMutations() {
 
   const deleteExchangeRateMutation = useMutation({
     mutationFn: async (currencyCode: string) => {
-      if (!apiClient) throw new Error("Not authenticated");
-      return apiClient.delete(`/api/admin/exchange-rate/${currencyCode}`);
+      return bankClient.delete(`/api/admin/exchange-rate/${currencyCode}`, {
+        headers: {
+          "x-api-key": bankApiKey,
+        },
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["exchange-rates"] });
